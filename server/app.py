@@ -12,4 +12,3 @@ database_config = {
         }
 
 database = MySQLdb.connect(**database_config)
-
