@@ -3,6 +3,7 @@ import MySQLdb
 from app import *
 from helpers import *
 
+### Common
 @app.route('/db/api/status/', methods=['GET'])
 def status():
     cursor = database.cursor()
@@ -21,6 +22,9 @@ def clear():
     # TODO:
     return result("OK")
 
+
+
+### User
 @app.route('/db/api/user/create/', methods=['POST'])
 def user_create():
     # TODO:
@@ -58,5 +62,134 @@ def user_unfollow():
 
 @app.route('/db/api/user/updateProfile/', methods=['POST'])
 def user_update_profile():
+    # TODO:
+    return result({})
+
+
+
+### Forum
+@app.route('/db/api/forum/create/', methods=['POST'])
+def forum_create():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/forum/details/', methods=['GET'])
+def forum_details():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/forum/listPosts/', methods=['GET'])
+def forum_list_posts():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/forum/listThreads/', methods=['GET'])
+def forum_list_threads():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/forum/listUsers/', methods=['GET'])
+def forum_list_users():
+    # TODO:
+    return result({})
+
+
+
+### Thread
+@app.route('/db/api/thread/close/', methods=['POST'])
+def thread_close():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/create/', methods=['POST'])
+def thread_create():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/details/', methods=['GET'])
+def thread_details():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/list/', methods=['GET'])
+def thread_list():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/listPosts/', methods=['GET'])
+def thread_list_posts():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/open/', methods=['POST'])
+def thread_open():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/remove/', methods=['POST'])
+def thread_remove():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/restore/', methods=['POST'])
+def thread_restore():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/subscribe/', methods=['POST'])
+def thread_subscribe():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/unsubscribe/', methods=['POST'])
+def thread_unsubscribe():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/update/', methods=['POST'])
+def thread_update():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/thread/vote/', methods=['POST'])
+def thread_vote():
+    # TODO:
+    return result({})
+
+
+
+### Post
+@app.route('/db/api/post/create/', methods=['POST'])
+def post_create():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/details/', methods=['GET'])
+def post_details():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/list/', methods=['GET'])
+def post_list():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/remove/', methods=['POST'])
+def post_remove():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/restore/', methods=['POST'])
+def post_restore():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/update/', methods=['POST'])
+def post_update():
+    # TODO:
+    return result({})
+
+@app.route('/db/api/post/vote/', methods=['POST'])
+def post_vote():
     # TODO:
     return result({})
