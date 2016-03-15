@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
 import MySQLdb
+from _mysql_exceptions import IntegrityError
+from werkzeug.exceptions import NotFound
 from app import *
 from helpers import *
 
+
 @app.errorhandler(400)
 def bad_request(error):
-    return result(error.description, CODE_INVALID), 400
+    return result_invalid(error.description)
 
 @app.errorhandler(404)
 def not_found(error):
-    return result(error.description, CODE_NOT_FOUND), 404
+    return result_not_found(error.response)
 
 ### Common
 @app.route('/db/api/status/', methods=['GET'])
 def status():
-    cursor = database.cursor()
+    db = get_db()
+    cursor = db.cursor()
 
     response = {}
 
@@ -31,17 +35,84 @@ def clear():
     return result("OK")
 
 
-
 ### User
 @app.route('/db/api/user/create/', methods=['POST'])
 def user_create():
-    # TODO:
-    return result({})
+    udata = get_request_json()
+    username = udata.get('username')
+    about = udata.get('about')
+    name = udata.get('name')
+    email = udata.get('email')
+    isAnonymous = udata.get('isAnonymous', False)
+
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""INSERT INTO
+                    Users (username, about, name, email, isAnonymous)
+                    VALUES (%s, %s, %s, %s, %s)""",
+                    (username, about, name, email, isAnonymous))
+        db.commit()
+
+        return result({
+            'about': about,
+            'email': email,
+            'id': cursor.lastrowid,
+            'isAnonymous': isAnonymous,
+            'name': name,
+            'username': username
+            })
+    except IntegrityError:
+        return result_user_exists("User %s already exists" % email)
 
 @app.route('/db/api/user/details/', methods=['GET'])
 def user_details():
-    # TODO:
-    return result({})
+    email = get_request_arg('user')
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, username, about, name, email, isAnonymous
+                    FROM Users
+                    WHERE email = %s""",
+                    (email, ))
+
+    if cursor.rowcount == 0:
+        return result_not_found("User %s doesn't exist" % email)
+
+    res = {}
+    udata = cursor.fetchone()
+    for keyn, val in enumerate(udata):
+        field = cursor.description[keyn][0]
+        if field[0:2] == 'is':
+            val = bool(val)
+        res[field] = val
+
+    cursor.execute("""SELECT follower
+                    FROM Followers
+                    WHERE followee = %s """,
+                    (email, ))
+
+    followers = cursor.fetchall()
+    res['followers'] = [f[0] for f in followers]
+
+    cursor.execute("""SELECT followee
+                    FROM Followers
+                    WHERE follower = %s """,
+                    (email, ))
+
+    following = cursor.fetchall()
+    res['following'] = [f[0] for f in following]
+
+    cursor.execute("""SELECT thread
+                    FROM Subscriptions
+                    WHERE user = %s """,
+                    (email, ))
+    threads = cursor.fetchall()
+    res['subscriptions'] = [int(t[0]) for t in threads]
+
+    return result(res)
 
 @app.route('/db/api/user/follow/', methods=['POST'])
 def user_follow():

@@ -12,3 +12,6 @@ database_config = {
         }
 
 database = MySQLdb.connect(**database_config)
+
+def get_db():
+    return database

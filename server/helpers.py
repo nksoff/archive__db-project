@@ -13,8 +13,29 @@ def get_request_json():
     json = request.get_json(True)
     return json
 
+def get_request_arg(key, default=None):
+    if default is None:
+        return request.args.get(key)
+    else:
+        return request.args.get(key, default)
+
 def result(response, code = CODE_SUCCESS):
     return jsonify({
         'code': code,
         'response': response
         })
+
+def result_not_found(response):
+    return result(response, CODE_NOT_FOUND)
+
+def result_invalid(response):
+    return result(response, CODE_INVALID)
+
+def result_invalid_semantic(response):
+    return result(response, CODE_INVALID_SEMANTIC)
+
+def result_unknown(response):
+    return result(response, CODE_UNKNOWN)
+
+def result_user_exists(response):
+    return result(response, CODE_USER_EXISTS)
