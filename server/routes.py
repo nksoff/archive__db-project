@@ -3,6 +3,14 @@ import MySQLdb
 from app import *
 from helpers import *
 
+@app.errorhandler(400)
+def bad_request(error):
+    return result(error.description, CODE_INVALID), 400
+
+@app.errorhandler(404)
+def not_found(error):
+    return result(error.description, CODE_NOT_FOUND), 404
+
 ### Common
 @app.route('/db/api/status/', methods=['GET'])
 def status():
