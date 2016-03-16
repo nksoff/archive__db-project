@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 import MySQLdb
-from _mysql_exceptions import IntegrityError
-from werkzeug.exceptions import NotFound
 from app import *
 from helpers import *
-
+import model
 
 @app.errorhandler(400)
 def bad_request(error):
@@ -17,117 +15,104 @@ def not_found(error):
 ### Common
 @app.route('/db/api/status/', methods=['GET'])
 def status():
-    db = get_db()
-    cursor = db.cursor()
-
-    response = {}
-
-    for entity in ['user', 'thread', 'forum', 'post']:
-        cursor.execute('SELECT COUNT(*) FROM %ss' % entity.capitalize())
-        data = cursor.fetchone()
-        response[entity] = data[0]
-
+    response = model.status()
     return result(response)
 
 @app.route('/db/api/clear/', methods=['POST'])
 def clear():
-    # TODO:
-    return result("OK")
+    res = model.clear()
+
+    if res:
+        return result("OK")
+    else:
+        return result_unknown("Couldn't clear data")
 
 
 ### User
 @app.route('/db/api/user/create/', methods=['POST'])
 def user_create():
     udata = get_request_json()
-    username = udata.get('username')
-    about = udata.get('about')
-    name = udata.get('name')
-    email = udata.get('email')
-    isAnonymous = udata.get('isAnonymous', False)
 
-    db = get_db()
-    cursor = db.cursor()
+    res = model.user_create(udata)
 
-    try:
-        cursor.execute("""INSERT INTO
-                    Users (username, about, name, email, isAnonymous)
-                    VALUES (%s, %s, %s, %s, %s)""",
-                    (username, about, name, email, isAnonymous))
-        db.commit()
-
-        return result({
-            'about': about,
-            'email': email,
-            'id': cursor.lastrowid,
-            'isAnonymous': isAnonymous,
-            'name': name,
-            'username': username
-            })
-    except IntegrityError:
-        return result_user_exists("User %s already exists" % email)
+    if res:
+        udata = model.user_data_short(udata.get('email'))
+        return result(udata)
+    else:
+        return result_user_exists("User %s already exists" % udata.get('email'))
 
 @app.route('/db/api/user/details/', methods=['GET'])
 def user_details():
     email = get_request_arg('user')
 
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT id, username, about, name, email, isAnonymous
-                    FROM Users
-                    WHERE email = %s""",
-                    (email, ))
-
-    if cursor.rowcount == 0:
+    res = model.user_data(email)
+    if res is None:
         return result_not_found("User %s doesn't exist" % email)
-
-    res = {}
-    udata = cursor.fetchone()
-    for keyn, val in enumerate(udata):
-        field = cursor.description[keyn][0]
-        if field[0:2] == 'is':
-            val = bool(val)
-        res[field] = val
-
-    cursor.execute("""SELECT follower
-                    FROM Followers
-                    WHERE followee = %s """,
-                    (email, ))
-
-    followers = cursor.fetchall()
-    res['followers'] = [f[0] for f in followers]
-
-    cursor.execute("""SELECT followee
-                    FROM Followers
-                    WHERE follower = %s """,
-                    (email, ))
-
-    following = cursor.fetchall()
-    res['following'] = [f[0] for f in following]
-
-    cursor.execute("""SELECT thread
-                    FROM Subscriptions
-                    WHERE user = %s """,
-                    (email, ))
-    threads = cursor.fetchall()
-    res['subscriptions'] = [int(t[0]) for t in threads]
 
     return result(res)
 
 @app.route('/db/api/user/follow/', methods=['POST'])
 def user_follow():
-    # TODO:
-    return result({})
+    data = get_request_json()
+
+    follower = data.get('follower')
+    followee = data.get('followee')
+
+    if not model.user_exists(follower):
+        return result_not_found("User %s doesn't exist" % follower)
+
+    if follower == followee:
+        return result_invalid_semantic("User %s cannot follow himself" % follower)
+
+    if not model.user_exists(followee):
+        return result_not_found("User %s doesn't exist" % followee)
+
+    if not model.user_follows(follower, followee):
+        res = model.user_follow(follower, followee)
+
+        if res:
+            udata = model.user_data(follower)
+            return result(udata)
+        else:
+            return result_unknown("Couldn't follow %s by %s" % (followee, follower))
+    else:
+        return result_unknown("User %s already follows %s" % (follower, followee))
 
 @app.route('/db/api/user/listFollowers/', methods=['GET'])
 def user_list_followers():
-    # TODO:
-    return result({})
+    email = get_request_arg('user')
+    limit = get_request_arg('limit', 0)
+    since_id = get_request_arg('since_id')
+    order = get_request_arg('order', 'desc')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    uemails = model.user_followers(email, limit=limit, order=order, since_id=since_id)
+
+    res = []
+    if len(uemails) > 0:
+        res = model.users_data(uemails)
+
+    return result(res)
 
 @app.route('/db/api/user/listFollowing/', methods=['GET'])
 def user_list_following():
-    # TODO:
-    return result({})
+    email = get_request_arg('user')
+    limit = get_request_arg('limit', 0)
+    since_id = get_request_arg('since_id')
+    order = get_request_arg('order', 'desc')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    uemails = model.user_following(email, limit=limit, order=order, since_id=since_id)
+
+    res = []
+    if len(uemails) > 0:
+        res = model.users_data(uemails)
+
+    return result(res)
 
 @app.route('/db/api/user/listPosts/', methods=['GET'])
 def user_list_posts():
@@ -136,8 +121,27 @@ def user_list_posts():
 
 @app.route('/db/api/user/unfollow/', methods=['POST'])
 def user_unfollow():
-    # TODO:
-    return result({})
+    data = get_request_json()
+
+    follower = data.get('follower')
+    followee = data.get('followee')
+
+    if not model.user_exists(follower):
+        return result_not_found("User %s doesn't exist" % follower)
+
+    if not model.user_exists(followee):
+        return result_not_found("User %s doesn't exist" % followee)
+
+    if model.user_follows(follower, followee):
+        res = model.user_unfollow(follower, followee)
+
+        if res:
+            udata = model.user_data(follower)
+            return result(udata)
+        else:
+            return result_unknown("Couldn't unfollow %s by %s" % (followee, follower))
+    else:
+        return result_unknown("User %s doesn't follow %s" % (follower, followee))
 
 @app.route('/db/api/user/updateProfile/', methods=['POST'])
 def user_update_profile():

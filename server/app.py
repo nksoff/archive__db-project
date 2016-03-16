@@ -11,7 +11,11 @@ database_config = {
         'db': 'db'
         }
 
-database = MySQLdb.connect(**database_config)
 
 def get_db():
+    database = MySQLdb.connect(**database_config)
     return database
+
+global_db = get_db()
+def sql_in(values):
+    return ','.join(map(global_db.literal, values))
