@@ -20,7 +20,9 @@ def status():
 
 @app.route('/db/api/clear/', methods=['POST'])
 def clear():
-    res = model.clear()
+    # res = model.clear()
+
+    res = True ### TODO:
 
     if res:
         return result("OK")
@@ -145,8 +147,22 @@ def user_unfollow():
 
 @app.route('/db/api/user/updateProfile/', methods=['POST'])
 def user_update_profile():
-    # TODO:
-    return result({})
+    data = get_request_json()
+
+    email = data.get('user')
+    name = data.get('name')
+    about = data.get('about')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    res = model.user_update(email, data)
+
+    if res:
+        udata = model.user_data(email)
+        return result(udata)
+    else:
+        return result_unknown("Couldn't update user profile for %s" % (email))
 
 
 

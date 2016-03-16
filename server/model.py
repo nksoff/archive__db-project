@@ -13,12 +13,16 @@ def status():
         data = cursor.fetchone()
         res[entity] = data[0]
 
-    db.close()
-
     return res
 
 def clear():
-    # TODO:
+    db = get_db()
+    cursor = db.cursor()
+
+    for entity in ['follower', 'subscription', 'post', 'thread', 'forum', 'user']:
+        cursor.execute('TRUNCATE %ss' % entity.capitalize())
+
+    db.commit()
     return True
 
 def user_create(fields):
@@ -38,7 +42,7 @@ def user_create(fields):
                         ))
         db.commit()
 
-        return True
+        return cursor.rowcount > 0
     except IntegrityError:
         return False
 
@@ -189,7 +193,7 @@ def user_follow(follower, followee):
                         follower
                         ))
         db.commit()
-        return True
+        return cursor.rowcount > 0
     except IntegrityError:
         return False
 
@@ -270,3 +274,19 @@ def user_following(email, limit=0, order='desc', since_id=None):
     cursor.execute(q, qargs)
 
     return [f[0] for f in cursor.fetchall()]
+
+def user_update(email, fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Users 
+                    SET about = %s, name = %s
+                    WHERE email = %s """,
+                (
+                    fields.get('about'),
+                    fields.get('name'),
+                    email
+                    ))
+    db.commit()
+
+    return True
