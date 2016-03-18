@@ -19,6 +19,9 @@ def get_request_arg(key, default=None):
     else:
         return request.args.get(key, default)
 
+def get_request_args(key):
+    return request.values.getlist(key)
+
 def result(response, code = CODE_SUCCESS):
     return jsonify({
         'code': code,
@@ -39,3 +42,9 @@ def result_unknown(response):
 
 def result_user_exists(response):
     return result(response, CODE_USER_EXISTS)
+
+
+def date_normal(date):
+    if date is None:
+        return ''
+    return date.strftime('%Y-%m-%d %H:%M:%S')

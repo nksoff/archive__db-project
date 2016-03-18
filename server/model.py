@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from _mysql_exceptions import IntegrityError
 from app import *
+from helpers import date_normal
 
 def status():
     db = get_db()
@@ -290,3 +291,93 @@ def user_update(email, fields):
     db.commit()
 
     return True
+
+def user_posts(email, limit=0, order='desc', since_date=None):
+    return posts_data({ 'user' : email }, limit, order, since_date)
+
+def posts_data(search_fields, limit=0, order='desc', since_date=None):
+    db = get_db()
+    cursor = db.cursor()
+
+    q = """SELECT *
+            FROM Posts
+            WHERE 1=1 """
+    qargs = []
+
+    for k in search_fields:
+        q += "AND %s = " % k
+        q += " %s "
+        qargs.append(search_fields.get(k))
+
+    if since_date is not None:
+        q += " AND date > %s "
+        qargs.append(since_date)
+
+    if order not in ['desc', 'asc']:
+        order = 'desc'
+
+    q += " ORDER BY date " + order
+
+    if limit:
+        q += " LIMIT " + str(limit)
+
+    cursor.execute(q, tuple(qargs))
+
+    res = []
+    row = cursor.fetchone()
+
+    while row is not None:
+        rowres = {}
+        for keyn, val in enumerate(row):
+            field = cursor.description[keyn][0]
+            if field == 'date':
+                val = date_normal(val)
+            if field[0:2] == 'is':
+                val = bool(val)
+            rowres[field] = val
+        res.append(rowres)
+        row = cursor.fetchone()
+
+    return res
+
+def forum_create(fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""INSERT INTO
+                    Forums (name, short_name, user)
+                    VALUES (%s, %s, %s)""",
+                    (
+                        fields.get('name'),
+                        fields.get('short_name'),
+                        fields.get('user')
+                        ))
+        db.commit()
+
+        return cursor.rowcount > 0
+    except IntegrityError:
+        return False
+
+def forum_data(forum, related=[]):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, name, short_name, user
+                    FROM Forums
+                    WHERE short_name = %s""",
+                    (forum, ))
+
+    if cursor.rowcount == 0:
+        return None
+
+    res = {}
+    fdata = cursor.fetchone()
+    for keyn, val in enumerate(fdata):
+        field = cursor.description[keyn][0]
+        res[field] = val
+
+    if 'user' in related:
+        res['user'] = user_data(res['user'])
+
+    return res

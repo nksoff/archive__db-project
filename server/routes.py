@@ -118,8 +118,16 @@ def user_list_following():
 
 @app.route('/db/api/user/listPosts/', methods=['GET'])
 def user_list_posts():
-    # TODO:
-    return result({})
+    email = get_request_arg('user')
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    posts = model.user_posts(email, limit=limit, order=order, since_date=since_date)
+    return result(posts)
 
 @app.route('/db/api/user/unfollow/', methods=['POST'])
 def user_unfollow():
@@ -169,13 +177,32 @@ def user_update_profile():
 ### Forum
 @app.route('/db/api/forum/create/', methods=['POST'])
 def forum_create():
-    # TODO:
-    return result({})
+    fdata = get_request_json()
+
+    email = fdata.get('user')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    forum = fdata.get('short_name')
+    res = model.forum_create(fdata)
+    fdata = model.forum_data(forum)
+
+    if fdata:
+        return result(fdata)
+    else:
+        return result_not_found("Couldn't create forum %s" % forum)
 
 @app.route('/db/api/forum/details/', methods=['GET'])
 def forum_details():
-    # TODO:
-    return result({})
+    forum = get_request_arg('forum')
+    related = get_request_args('related')
+
+    fdata = model.forum_data(forum, related=related)
+    if fdata:
+        return result(fdata)
+    else:
+        return result_not_found("Forum %s is not found" % forum)
 
 @app.route('/db/api/forum/listPosts/', methods=['GET'])
 def forum_list_posts():
