@@ -10,7 +10,7 @@ def bad_request(error):
 
 @app.errorhandler(404)
 def not_found(error):
-    return result_not_found(error.response)
+    return result_not_found(error.description)
 
 ### Common
 @app.route('/db/api/status/', methods=['GET'])
