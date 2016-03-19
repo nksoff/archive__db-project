@@ -90,11 +90,13 @@ def user_list_followers():
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
 
-    uemails = model.user_followers(email, limit=limit, order=order, since_id=since_id)
+    uemails = model.user_list_followers(email, limit=limit, order=order, since_id=since_id)
 
     res = []
     if len(uemails) > 0:
-        res = model.users_data(uemails)
+        users = model.users_data(uemails)
+        for email in uemails:
+            res.append(users.get(email))
 
     return result(res)
 
@@ -108,11 +110,13 @@ def user_list_following():
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
 
-    uemails = model.user_following(email, limit=limit, order=order, since_id=since_id)
+    uemails = model.user_list_following(email, limit=limit, order=order, since_id=since_id)
 
     res = []
     if len(uemails) > 0:
-        res = model.users_data(uemails)
+        users = model.users_data(uemails)
+        for email in uemails:
+            res.append(users.get(email))
 
     return result(res)
 
@@ -207,14 +211,15 @@ def forum_details():
 @app.route('/db/api/forum/listPosts/', methods=['GET'])
 def forum_list_posts():
     forum = get_request_arg('forum')
-    limit = get_request_arg('limit', 0)
-    since_date = get_request_arg('since')
-    order = get_request_arg('order', 'desc')
     if not model.forum_exists(forum):
         return result_not_found("Forum %s doesn't exist" % forum)
 
-    # TODO: related
-    posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date)
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+    related = get_request_args('related')
+
+    posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date, related=related)
     return result(posts)
 
 @app.route('/db/api/forum/listThreads/', methods=['GET'])

@@ -104,9 +104,6 @@ def users_data(emails, follow_data=True, subscriptions=True):
                     WHERE email IN (%s)"""
                     % sql_in(emails))
 
-    if cursor.rowcount == 0:
-        return []
-
     res = {}
     udata = cursor.fetchone()
 
@@ -120,6 +117,9 @@ def users_data(emails, follow_data=True, subscriptions=True):
         res[ures['email']] = ures
 
         udata = cursor.fetchone()
+
+    if not len(res):
+        return res
 
     if follow_data:
         following = {}
@@ -174,12 +174,7 @@ def users_data(emails, follow_data=True, subscriptions=True):
             if subscriptions:
                 res[key]['subscriptions'] = threads.get(key, [])
 
-    res_final = []
-    for email in emails:
-        if res.has_key(email):
-            res_final.append(res.get(email))
-
-    return res_final
+    return res
 
 def user_follow(follower, followee):
     db = get_db()
@@ -224,7 +219,7 @@ def user_follows(follower, followee):
 
     return cursor.rowcount > 0
 
-def user_followers(email, limit=0, order='desc', since_id=None):
+def user_list_followers(email, limit=0, order='desc', since_id=None):
     db = get_db()
     cursor = db.cursor()
 
@@ -250,7 +245,7 @@ def user_followers(email, limit=0, order='desc', since_id=None):
 
     return [f[0] for f in cursor.fetchall()]
 
-def user_following(email, limit=0, order='desc', since_id=None):
+def user_list_following(email, limit=0, order='desc', since_id=None):
     db = get_db()
     cursor = db.cursor()
 
@@ -293,9 +288,9 @@ def user_update(email, fields):
     return True
 
 def user_posts(email, limit=0, order='desc', since_date=None):
-    return posts_data({ 'user' : email }, limit, order, since_date)
+    return posts_list({ 'user' : email }, limit, order, since_date)
 
-def posts_data(search_fields, limit=0, order='desc', since_date=None):
+def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]):
     db = get_db()
     cursor = db.cursor()
 
@@ -326,6 +321,10 @@ def posts_data(search_fields, limit=0, order='desc', since_date=None):
     res = []
     row = cursor.fetchone()
 
+    forums = []
+    threads = []
+    users = []
+
     while row is not None:
         rowres = {}
         for keyn, val in enumerate(row):
@@ -335,8 +334,30 @@ def posts_data(search_fields, limit=0, order='desc', since_date=None):
             if field[0:2] == 'is':
                 val = bool(val)
             rowres[field] = val
+
+        if 'forum' in related:
+            forums.append(rowres['forum'])
+        if 'thread' in related:
+            threads.append(rowres['thread'])
+        if 'user' in related:
+            users.append(rowres['user'])
         res.append(rowres)
         row = cursor.fetchone()
+
+    if 'forum' in related:
+        forums = forums_data(forums)
+        for keyn, val in enumerate(res):
+            res[keyn]['forum'] = forums.get(val['forum'])
+
+    if 'thread' in related:
+        threads = threads_data(threads)
+        for keyn, val in enumerate(res):
+            res[keyn]['thread'] = threads.get(val['thread'])
+
+    if 'user' in related:
+        users = users_data(users)
+        for keyn, val in enumerate(res):
+            res[keyn]['user'] = users.get(val['user'])
 
     return res
 
@@ -391,9 +412,6 @@ def forums_data(forums):
                     WHERE short_name IN (%s)"""
                     % sql_in(forums))
 
-    if cursor.rowcount == 0:
-        return []
-
     res = {}
     fdata = cursor.fetchone()
 
@@ -402,11 +420,11 @@ def forums_data(forums):
         for keyn, val in enumerate(fdata):
             field = cursor.description[keyn][0]
             fres[field] = val
-        res[fres['short_name']] = ures
+        res[fres['short_name']] = fres
 
         fdata = cursor.fetchone()
 
-    return fdata.values()
+    return res
 
 def forum_exists(forum):
     db = get_db()
@@ -419,8 +437,8 @@ def forum_exists(forum):
 
     return cursor.rowcount > 0
 
-def forum_posts(forum, limit=0, order='desc', since_date=None):
-    return posts_data({ 'forum' : forum }, limit, order, since_date)
+def forum_posts(forum, limit=0, order='desc', since_date=None, related=[]):
+    return posts_list({ 'forum' : forum }, limit, order, since_date, related)
 
 def thread_create(fields):
     db = get_db()
@@ -476,6 +494,33 @@ def thread_data(thread, related=[], counters=True):
 
     if 'forum' in related:
         res['forum'] = forum_data(res['forum'])
+
+    return res
+
+def threads_data(threads):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts, forum, user
+                    FROM Threads
+                    WHERE id IN (%s)"""
+                    % sql_in(threads))
+
+    res = {}
+    tdata = cursor.fetchone()
+
+    while tdata is not None:
+        tres = {}
+        for keyn, val in enumerate(tdata):
+            field = cursor.description[keyn][0]
+            if field == 'date':
+                val = date_normal(val)
+            if field[0:2] == 'is':
+                val = bool(val)
+            tres[field] = val
+        res[tres['id']] = tres
+
+        tdata = cursor.fetchone()
 
     return res
 
@@ -553,3 +598,14 @@ def post_data(post, related=[], counters=True):
         res['thread'] = thread_data(res['thread'])
 
     return res
+
+def post_exists(post):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT 1
+                    FROM Posts
+                    WHERE id = %s""",
+                    (post, ))
+
+    return cursor.rowcount > 0
