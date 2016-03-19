@@ -20,9 +20,7 @@ def status():
 
 @app.route('/db/api/clear/', methods=['POST'])
 def clear():
-    # res = model.clear()
-
-    res = True ### TODO:
+    res = model.clear()
 
     if res:
         return result("OK")
@@ -87,17 +85,13 @@ def user_list_followers():
     since_id = get_request_arg('since_id')
     order = get_request_arg('order', 'desc')
 
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
 
-    uemails = model.user_list_followers(email, limit=limit, order=order, since_id=since_id)
-
-    res = []
-    if len(uemails) > 0:
-        users = model.users_data(uemails)
-        for email in uemails:
-            res.append(users.get(email))
-
+    res = model.user_list_followers(email, limit=limit, order=order, since_id=since_id, full=True)
     return result(res)
 
 @app.route('/db/api/user/listFollowing/', methods=['GET'])
@@ -107,17 +101,13 @@ def user_list_following():
     since_id = get_request_arg('since_id')
     order = get_request_arg('order', 'desc')
 
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
 
-    uemails = model.user_list_following(email, limit=limit, order=order, since_id=since_id)
-
-    res = []
-    if len(uemails) > 0:
-        users = model.users_data(uemails)
-        for email in uemails:
-            res.append(users.get(email))
-
+    res = model.user_list_following(email, limit=limit, order=order, since_id=since_id, full=True)
     return result(res)
 
 @app.route('/db/api/user/listPosts/', methods=['GET'])
@@ -126,6 +116,9 @@ def user_list_posts():
     limit = get_request_arg('limit', 0)
     since_date = get_request_arg('since')
     order = get_request_arg('order', 'desc')
+
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
 
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
@@ -202,6 +195,9 @@ def forum_details():
     forum = get_request_arg('forum')
     related = get_request_args('related')
 
+    if not check_enum(related, ['user']):
+        return result_invalid_semantic("Wrong value for related")
+
     fdata = model.forum_data(forum, related=related)
     if fdata:
         return result(fdata)
@@ -219,18 +215,53 @@ def forum_list_posts():
     order = get_request_arg('order', 'desc')
     related = get_request_args('related')
 
+    if not check_enum(related, ['user', 'forum', 'thread']):
+        return result_invalid_semantic("Wrong value for related")
+
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
     posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date, related=related)
     return result(posts)
 
 @app.route('/db/api/forum/listThreads/', methods=['GET'])
 def forum_list_threads():
-    # TODO:
-    return result({})
+    forum = get_request_arg('forum')
+    if not model.forum_exists(forum):
+        return result_not_found("Forum %s doesn't exist" % forum)
+
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+    related = get_request_args('related')
+
+    if not check_enum(related, ['user', 'forum']):
+        return result_invalid_semantic("Wrong value for related")
+
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    threads = model.forum_threads(forum, limit=limit, order=order, since_date=since_date, related=related)
+    return result(threads)
 
 @app.route('/db/api/forum/listUsers/', methods=['GET'])
 def forum_list_users():
-    # TODO:
-    return result({})
+    forum = get_request_arg('forum')
+    if not model.forum_exists(forum):
+        return result_not_found("Forum %s doesn't exist" % forum)
+
+    limit = get_request_arg('limit', 0)
+    since_id = get_request_arg('since_id')
+    order = get_request_arg('order', 'desc')
+
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    if not check_enum(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    users = model.forum_users(forum, limit=limit, order=order, since_id=since_id, full=True)
+    return result(users)
 
 
 
@@ -266,6 +297,9 @@ def thread_create():
 def thread_details():
     thread = get_request_arg('thread')
     related = get_request_args('related')
+
+    if not check_enum(related, ['user', 'forum']):
+        return result_invalid_semantic("Wrong value for related")
 
     tdata = model.thread_data(thread, related=related)
     if tdata:
@@ -352,6 +386,9 @@ def post_create():
 def post_details():
     post = get_request_arg('post')
     related = get_request_args('related')
+
+    if not check_enum(related, ['user', 'forum', 'thread']):
+        return result_invalid_semantic("Wrong value for related")
 
     pdata = model.post_data(post, related=related)
     if pdata:

@@ -48,3 +48,9 @@ def date_normal(date):
     if date is None:
         return ''
     return date.strftime('%Y-%m-%d %H:%M:%S')
+
+def check_enum(enum, allowed=[]):
+    for i in enum:
+        if i not in allowed:
+            return False
+    return True

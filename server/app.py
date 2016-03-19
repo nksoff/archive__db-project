@@ -14,6 +14,7 @@ database_config = {
 
 def get_db():
     database = MySQLdb.connect(**database_config)
+    database.set_character_set('utf8')
     return database
 
 global_db = get_db()
