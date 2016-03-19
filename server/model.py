@@ -310,13 +310,13 @@ def posts_data(search_fields, limit=0, order='desc', since_date=None):
         qargs.append(search_fields.get(k))
 
     if since_date is not None:
-        q += " AND date > %s "
+        q += " AND `date` > %s "
         qargs.append(since_date)
 
     if order not in ['desc', 'asc']:
         order = 'desc'
 
-    q += " ORDER BY date " + order
+    q += " ORDER BY `date` " + order
 
     if limit:
         q += " LIMIT " + str(limit)
@@ -379,5 +379,177 @@ def forum_data(forum, related=[]):
 
     if 'user' in related:
         res['user'] = user_data(res['user'])
+
+    return res
+
+def forums_data(forums):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, name, short_name, user
+                    FROM Forums
+                    WHERE short_name IN (%s)"""
+                    % sql_in(forums))
+
+    if cursor.rowcount == 0:
+        return []
+
+    res = {}
+    fdata = cursor.fetchone()
+
+    while fdata is not None:
+        fres = {}
+        for keyn, val in enumerate(fdata):
+            field = cursor.description[keyn][0]
+            fres[field] = val
+        res[fres['short_name']] = ures
+
+        fdata = cursor.fetchone()
+
+    return fdata.values()
+
+def forum_exists(forum):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT 1
+                    FROM Forums
+                    WHERE short_name = %s""",
+                    (forum, ))
+
+    return cursor.rowcount > 0
+
+def forum_posts(forum, limit=0, order='desc', since_date=None):
+    return posts_data({ 'forum' : forum }, limit, order, since_date)
+
+def thread_create(fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""INSERT INTO
+                    Threads (title, slug, message, date, isClosed, isDeleted, forum, user)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        fields.get('title'),
+                        fields.get('slug'),
+                        fields.get('message'),
+                        fields.get('date'),
+                        fields.get('isClosed', False),
+                        fields.get('isDeleted', False),
+                        fields.get('forum'),
+                        fields.get('user')
+                        ))
+        db.commit()
+
+        return cursor.lastrowid
+    except IntegrityError:
+        return False
+
+def thread_data(thread, related=[], counters=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts, forum, user
+                    FROM Threads
+                    WHERE id = %s""",
+                    (thread, ))
+
+    if cursor.rowcount == 0:
+        return None
+
+    res = {}
+    tdata = cursor.fetchone()
+    for keyn, val in enumerate(tdata):
+        field = cursor.description[keyn][0]
+        if field == 'date':
+            val = date_normal(val)
+        if field[0:2] == 'is':
+            val = bool(val)
+
+        if not counters and field in ['likes', 'dislikes', 'posts']:
+            continue
+        res[field] = val
+
+    if 'user' in related:
+        res['user'] = user_data(res['user'])
+
+    if 'forum' in related:
+        res['forum'] = forum_data(res['forum'])
+
+    return res
+
+def thread_exists(thread):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT 1
+                    FROM Threads
+                    WHERE id = %s""",
+                    (thread, ))
+
+    return cursor.rowcount > 0
+
+def post_create(fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""INSERT INTO
+                    Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        fields.get('message'),
+                        fields.get('date'),
+                        fields.get('isApproved', False),
+                        fields.get('isHighlighted', False),
+                        fields.get('isEdited', False),
+                        fields.get('isSpam', False),
+                        fields.get('isDeleted', False),
+                        fields.get('parent', None),
+                        fields.get('user'),
+                        fields.get('thread'),
+                        fields.get('forum')
+                        ))
+
+        db.commit()
+
+        return cursor.lastrowid
+    except IntegrityError:
+        return False
+
+def post_data(post, related=[], counters=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id, message, date, likes, dislikes, points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum
+                    FROM Posts
+                    WHERE id = %s""",
+                    (post, ))
+
+    if cursor.rowcount == 0:
+        return None
+
+    res = {}
+    pdata = cursor.fetchone()
+    for keyn, val in enumerate(pdata):
+        field = cursor.description[keyn][0]
+        if field == 'date':
+            val = date_normal(val)
+        if field[0:2] == 'is':
+            val = bool(val)
+
+        if not counters and field in ['likes', 'dislikes', 'points']:
+            continue
+        res[field] = val
+
+    if 'user' in related:
+        res['user'] = user_data(res['user'])
+
+    if 'forum' in related:
+        res['forum'] = forum_data(res['forum'])
+
+    if 'thread' in related:
+        res['thread'] = thread_data(res['thread'])
 
     return res

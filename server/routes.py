@@ -202,12 +202,20 @@ def forum_details():
     if fdata:
         return result(fdata)
     else:
-        return result_not_found("Forum %s is not found" % forum)
+        return result_not_found("Forum %s doesn't exist" % forum)
 
 @app.route('/db/api/forum/listPosts/', methods=['GET'])
 def forum_list_posts():
-    # TODO:
-    return result({})
+    forum = get_request_arg('forum')
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+    if not model.forum_exists(forum):
+        return result_not_found("Forum %s doesn't exist" % forum)
+
+    # TODO: related
+    posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date)
+    return result(posts)
 
 @app.route('/db/api/forum/listThreads/', methods=['GET'])
 def forum_list_threads():
@@ -229,13 +237,36 @@ def thread_close():
 
 @app.route('/db/api/thread/create/', methods=['POST'])
 def thread_create():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+
+    email = tdata.get('user')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    forum = tdata.get('forum')
+
+    if not model.forum_exists(forum):
+        return result_not_found("Forum %s doesn't exist" % forum)
+
+    thread_id = model.thread_create(tdata)
+    tdata = model.thread_data(thread_id, counters=False)
+
+    if tdata:
+        return result(tdata)
+    else:
+        return result_not_found("Couldn't create thread %s" % tdata.get('title'))
 
 @app.route('/db/api/thread/details/', methods=['GET'])
 def thread_details():
-    # TODO:
-    return result({})
+    thread = get_request_arg('thread')
+    related = get_request_args('related')
+
+    tdata = model.thread_data(thread, related=related)
+    if tdata:
+        return result(tdata)
+    else:
+        return result_not_found("Thread %s doesn't exist" % thread)
 
 @app.route('/db/api/thread/list/', methods=['GET'])
 def thread_list():
@@ -287,13 +318,41 @@ def thread_vote():
 ### Post
 @app.route('/db/api/post/create/', methods=['POST'])
 def post_create():
-    # TODO:
-    return result({})
+    pdata = get_request_json()
+
+    email = pdata.get('user')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    forum = pdata.get('forum')
+
+    if not model.forum_exists(forum):
+        return result_not_found("Forum %s doesn't exist" % forum)
+
+    thread = pdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    post_id = model.post_create(pdata)
+    pdata = model.post_data(post_id, counters=False)
+
+    if pdata:
+        return result(pdata)
+    else:
+        return result_not_found("Couldn't create post") 
 
 @app.route('/db/api/post/details/', methods=['GET'])
 def post_details():
-    # TODO:
-    return result({})
+    post = get_request_arg('post')
+    related = get_request_args('related')
+
+    pdata = model.post_data(post, related=related)
+    if pdata:
+        return result(pdata)
+    else:
+        return result_not_found("Post %s doesn't exist" % post)
 
 @app.route('/db/api/post/list/', methods=['GET'])
 def post_list():
