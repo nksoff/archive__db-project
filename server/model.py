@@ -475,7 +475,7 @@ def thread_data(thread, related=[], counters=True):
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts, forum, user
+    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, (likes - dislikes) AS points, isClosed, isDeleted, posts, forum, user
                     FROM Threads
                     WHERE id = %s""",
                     (thread, ))
@@ -508,7 +508,7 @@ def threads_data(threads):
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts, forum, user
+    cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, (likes - dislikes) AS points, isClosed, isDeleted, posts, forum, user
                     FROM Threads
                     WHERE id IN (%s)"""
                     % sql_in(threads))
@@ -535,7 +535,7 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
     db = get_db()
     cursor = db.cursor()
 
-    q = """SELECT *
+    q = """SELECT *, (likes - dislikes) AS points
             FROM Threads
             WHERE 1=1 """
     qargs = []
@@ -730,8 +730,7 @@ def thread_vote(thread, like=True):
         field = 'dis' + field
 
     cursor.execute("""UPDATE Threads
-                    SET %s = %s + 1,
-                    points = likes - dislikes
+                    SET %s = %s + 1
                     WHERE id = %s """ % (field, field, '%s'),
                     (
                         thread,
@@ -761,7 +760,7 @@ def post_data(post, related=[], counters=True):
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT id, message, date, likes, dislikes, points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum
+    cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum
                     FROM Posts
                     WHERE id = %s""",
                     (post, ))
@@ -797,7 +796,7 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
     db = get_db()
     cursor = db.cursor()
 
-    q = """SELECT *
+    q = """SELECT *, (likes - dislikes) AS points
             FROM Posts
             WHERE 1=1 """
     qargs = []
@@ -930,8 +929,7 @@ def post_vote(post, like=True):
         field = 'dis' + field
 
     cursor.execute("""UPDATE Posts
-                    SET %s = %s + 1,
-                    points = likes - dislikes
+                    SET %s = %s + 1
                     WHERE id = %s """ % (field, field, '%s'),
                     (
                         post,
