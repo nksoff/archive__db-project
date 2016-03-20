@@ -749,3 +749,21 @@ def post_exists(post):
                     (post, ))
 
     return cursor.rowcount > 0
+
+def post_set_deleted(post, deleted=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Posts
+                    SET isDeleted = %s
+                    WHERE id = %s """,
+                    (deleted, post,))
+    db.commit()
+
+    return True
+
+def post_remove(post):
+    return post_set_deleted(post, True)
+
+def post_restore(post):
+    return post_set_deleted(post, False)

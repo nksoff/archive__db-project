@@ -463,13 +463,25 @@ def post_list():
 
 @app.route('/db/api/post/remove/', methods=['POST'])
 def post_remove():
-    # TODO:
-    return result({})
+    pdata = get_request_json()
+    post = pdata.get('post')
+
+    if not model.post_exists(post):
+        return result_not_found("Post %s doesn't exist" % post)
+
+    res = model.post_remove(post)
+    return result({ 'post': post })
 
 @app.route('/db/api/post/restore/', methods=['POST'])
 def post_restore():
-    # TODO:
-    return result({})
+    pdata = get_request_json()
+    post = pdata.get('post')
+
+    if not model.post_exists(post):
+        return result_not_found("Post %s doesn't exist" % post)
+
+    res = model.post_restore(post)
+    return result({ 'post': post })
 
 @app.route('/db/api/post/update/', methods=['POST'])
 def post_update():
