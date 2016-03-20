@@ -265,8 +265,14 @@ def forum_list_users():
 ### Thread
 @app.route('/db/api/thread/close/', methods=['POST'])
 def thread_close():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    res = model.thread_close(thread)
+    return result({ 'thread': thread })
 
 @app.route('/db/api/thread/create/', methods=['POST'])
 def thread_create():
@@ -355,18 +361,36 @@ def thread_list_posts():
 
 @app.route('/db/api/thread/open/', methods=['POST'])
 def thread_open():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    res = model.thread_open(thread)
+    return result({ 'thread': thread })
 
 @app.route('/db/api/thread/remove/', methods=['POST'])
 def thread_remove():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    res = model.thread_remove(thread)
+    return result({ 'thread': thread })
 
 @app.route('/db/api/thread/restore/', methods=['POST'])
 def thread_restore():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    res = model.thread_restore(thread)
+    return result({ 'thread': thread })
 
 @app.route('/db/api/thread/subscribe/', methods=['POST'])
 def thread_subscribe():
@@ -385,8 +409,22 @@ def thread_update():
 
 @app.route('/db/api/thread/vote/', methods=['POST'])
 def thread_vote():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+    vote = int(tdata.get('vote') or 0)
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    if not check_arg(vote, [-1, 1]):
+        return result_invalid_semantic("Wrong value for vote")
+
+    res = model.thread_vote(thread, vote > 0)
+    tdata = model.thread_data(thread)
+    if tdata:
+        return result(tdata)
+    else:
+        return result_unknown("Couldn't vote for thread %s" % thread)
 
 
 
@@ -500,7 +538,7 @@ def post_update():
 def post_vote():
     pdata = get_request_json()
     post = pdata.get('post')
-    vote = int(pdata.get('vote'))
+    vote = int(pdata.get('vote') or 0)
 
     if not model.post_exists(post):
         return result_not_found("Post %s doesn't exist" % post)

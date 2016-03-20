@@ -632,6 +632,61 @@ def post_create(fields):
     except IntegrityError:
         return False
 
+def thread_set_closed(thread, closed=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Threads
+                    SET isClosed = %s
+                    WHERE id = %s """,
+                    (closed, thread,))
+    db.commit()
+
+    return True
+
+def thread_close(thread):
+    return thread_set_closed(thread, True)
+
+def thread_open(thread):
+    return thread_set_closed(thread, False)
+
+def thread_set_deleted(thread, deleted=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Threads
+                    SET isDeleted = %s
+                    WHERE id = %s """,
+                    (deleted, thread,))
+    db.commit()
+
+    return True
+
+def thread_remove(thread):
+    return thread_set_deleted(thread, True)
+
+def thread_restore(thread):
+    return thread_set_deleted(thread, False)
+
+def thread_vote(thread, like=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    field = 'likes'
+    if not like:
+        field = 'dis' + field
+
+    cursor.execute("""UPDATE Threads
+                    SET %s = %s + 1,
+                    points = likes - dislikes
+                    WHERE id = %s """ % (field, field, '%s'),
+                    (
+                        thread,
+                        ))
+    db.commit()
+
+    return True
+
 def post_data(post, related=[], counters=True):
     db = get_db()
     cursor = db.cursor()
