@@ -54,3 +54,6 @@ def check_enum(enum, allowed=[]):
         if i not in allowed:
             return False
     return True
+
+def check_arg(val, allowed=[]):
+    return val in allowed

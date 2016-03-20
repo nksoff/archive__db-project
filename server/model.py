@@ -310,8 +310,11 @@ def user_update(email, fields):
 
     return True
 
-def user_posts(email, limit=0, order='desc', since_date=None):
-    return posts_list({ 'user' : email }, limit, order, since_date)
+def user_posts(email, limit=0, order='desc', since_date=None, related=[]):
+    return posts_list({ 'user' : email }, limit, order, since_date, related)
+
+def user_threads(email, limit=0, order='desc', since_date=None, related=[]):
+    return threads_list({ 'user' : email }, limit, order, since_date, related)
 
 def forum_create(fields):
     db = get_db()
@@ -579,6 +582,9 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
             res[keyn]['user'] = users.get(val['user'])
 
     return res
+
+def thread_posts(thread, limit=0, order='desc', since_date=None, related=[]):
+    return posts_list({ 'thread' : thread }, limit, order, since_date, related)
 
 def thread_exists(thread):
     db = get_db()

@@ -85,7 +85,7 @@ def user_list_followers():
     since_id = get_request_arg('since_id')
     order = get_request_arg('order', 'desc')
 
-    if not check_enum(order, ['desc', 'asc']):
+    if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
     if not model.user_exists(email):
@@ -101,7 +101,7 @@ def user_list_following():
     since_id = get_request_arg('since_id')
     order = get_request_arg('order', 'desc')
 
-    if not check_enum(order, ['desc', 'asc']):
+    if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
     if not model.user_exists(email):
@@ -117,8 +117,8 @@ def user_list_posts():
     since_date = get_request_arg('since')
     order = get_request_arg('order', 'desc')
 
-    if not check_enum(order, ['desc', 'asc']):
-        return result_invalid_semantic("Wrong value for order")
+    if not check_arg(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order: %s" % order)
 
     if not model.user_exists(email):
         return result_not_found("User %s doesn't exist" % email)
@@ -218,7 +218,7 @@ def forum_list_posts():
     if not check_enum(related, ['user', 'forum', 'thread']):
         return result_invalid_semantic("Wrong value for related")
 
-    if not check_enum(order, ['desc', 'asc']):
+    if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
     posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date, related=related)
@@ -238,7 +238,7 @@ def forum_list_threads():
     if not check_enum(related, ['user', 'forum']):
         return result_invalid_semantic("Wrong value for related")
 
-    if not check_enum(order, ['desc', 'asc']):
+    if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
     threads = model.forum_threads(forum, limit=limit, order=order, since_date=since_date, related=related)
@@ -254,10 +254,7 @@ def forum_list_users():
     since_id = get_request_arg('since_id')
     order = get_request_arg('order', 'desc')
 
-    if not check_enum(order, ['desc', 'asc']):
-        return result_invalid_semantic("Wrong value for order")
-
-    if not check_enum(order, ['desc', 'asc']):
+    if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
     users = model.forum_users(forum, limit=limit, order=order, since_id=since_id, full=True)
@@ -309,13 +306,52 @@ def thread_details():
 
 @app.route('/db/api/thread/list/', methods=['GET'])
 def thread_list():
-    # TODO:
-    return result({})
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+
+    if not check_arg(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    forum = get_request_arg('forum')
+    if forum is not None:
+        if not model.forum_exists(forum):
+            return result_not_found("Forum %s doesn't exist" % forum)
+
+        threads = model.forum_threads(forum, limit=limit, order=order, since_date=since_date)
+        return result(threads)
+
+    email = get_request_arg('user')
+    if email is not None:
+        if not model.user_exists(email):
+            return result_not_found("User %s doesn't exist" % email)
+
+        threads = model.user_threads(email, limit=limit, order=order, since_date=since_date)
+        return result(threads)
+
+    return result_invalid_semantic("User and forum are not set")
+
 
 @app.route('/db/api/thread/listPosts/', methods=['GET'])
 def thread_list_posts():
-    # TODO:
-    return result({})
+    thread = get_request_arg('thread')
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+    sort = get_request_arg('sort', 'flat')
+
+    # TODO: sorts!!!
+    if not check_arg(sort, ['flat', 'tree', 'parent_tree']):
+        return result_invalid_semantic("Wrong value for sort")
+
+    if not check_arg(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    posts = model.thread_posts(thread, limit=limit, order=order, since_date=since_date)
+    return result(posts)
 
 @app.route('/db/api/thread/open/', methods=['POST'])
 def thread_open():
@@ -400,6 +436,30 @@ def post_details():
 def post_list():
     # TODO:
     return result({})
+    limit = get_request_arg('limit', 0)
+    since_date = get_request_arg('since')
+    order = get_request_arg('order', 'desc')
+
+    if not check_arg(order, ['desc', 'asc']):
+        return result_invalid_semantic("Wrong value for order")
+
+    forum = get_request_arg('forum')
+    if forum is not None:
+        if not model.forum_exists(forum):
+            return result_not_found("Forum %s doesn't exist" % forum)
+
+        threads = model.forum_threads(forum, limit=limit, order=order, since_date=since_date)
+        return result(threads)
+
+    thread = get_request_arg('thread')
+    if thread is not None:
+        if not model.thread_exists(thread):
+            return result_not_found("Thread %s doesn't exist" % thread)
+
+        posts = model.threads_posts(thread, limit=limit, order=order, since_date=since_date)
+        return result(posts)
+
+    return result_invalid_semantic("Thread and forum are not set")
 
 @app.route('/db/api/post/remove/', methods=['POST'])
 def post_remove():
