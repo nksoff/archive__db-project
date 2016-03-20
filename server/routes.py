@@ -394,18 +394,70 @@ def thread_restore():
 
 @app.route('/db/api/thread/subscribe/', methods=['POST'])
 def thread_subscribe():
-    # TODO:
-    return result({})
+    data = get_request_json()
+
+    email = data.get('user')
+    thread = data.get('thread')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    if not model.user_subscribed(email, thread):
+        res = model.thread_subscribe(email, thread)
+
+        if res:
+            return result({
+                'user': email,
+                'thread': thread
+                })
+        else:
+            return result_unknown("Couldn't subscribe %s by %s" % (thread, email))
+    else:
+        return result_unknown("User %s already is subscribed to %s" % (email, thread))
 
 @app.route('/db/api/thread/unsubscribe/', methods=['POST'])
 def thread_unsubscribe():
-    # TODO:
-    return result({})
+    data = get_request_json()
+
+    email = data.get('user')
+    thread = data.get('thread')
+
+    if not model.user_exists(email):
+        return result_not_found("User %s doesn't exist" % email)
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    if model.user_subscribed(email, thread):
+        res = model.thread_unsubscribe(email, thread)
+
+        if res:
+            return result({
+                'user': email,
+                'thread': thread
+                })
+        else:
+            return result_unknown("Couldn't unsubscribe %s by %s" % (thread, email))
+    else:
+        return result_unknown("User %s is not subscribed to %s" % (email, thread))
 
 @app.route('/db/api/thread/update/', methods=['POST'])
 def thread_update():
-    # TODO:
-    return result({})
+    tdata = get_request_json()
+    thread = tdata.get('thread')
+
+    if not model.thread_exists(thread):
+        return result_not_found("Thread %s doesn't exist" % thread)
+
+    res = model.thread_update(thread, tdata)
+    tdata = model.thread_data(thread)
+    if tdata:
+        return result(tdata)
+    else:
+        return result_unknown("Couldn't update thread %s" % thread)
 
 @app.route('/db/api/thread/vote/', methods=['POST'])
 def thread_vote():

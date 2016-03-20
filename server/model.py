@@ -219,6 +219,17 @@ def user_follows(follower, followee):
 
     return cursor.rowcount > 0
 
+def user_subscribed(email, thread):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute(""" SELECT 1
+                    FROM Subscriptions
+                    WHERE user = %s AND thread = %s """,
+                    (email, thread))
+
+    return cursor.rowcount > 0
+
 def user_list_followers(email, limit=0, order='desc', since_id=None, full=False):
     db = get_db()
     cursor = db.cursor()
@@ -597,6 +608,38 @@ def thread_exists(thread):
 
     return cursor.rowcount > 0
 
+def thread_subscribe(user, thread):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("""INSERT INTO
+                    Subscriptions (thread, user)
+                    VALUES (%s, %s)""",
+                    (
+                        thread,
+                        user
+                        ))
+        db.commit()
+        return cursor.rowcount > 0
+    except IntegrityError:
+        return False
+
+def thread_unsubscribe(user, thread):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""DELETE
+                FROM Subscriptions 
+                WHERE thread = %s AND user = %s""",
+                (
+                    thread,
+                    user
+                    ))
+    db.commit()
+
+    return cursor.rowcount > 0
+
 def post_create(fields):
     db = get_db()
     cursor = db.cursor()
@@ -658,6 +701,16 @@ def thread_set_deleted(thread, deleted=True):
                     SET isDeleted = %s
                     WHERE id = %s """,
                     (deleted, thread,))
+
+    cursor.execute("""UPDATE Posts
+                    SET isDeleted = %s
+                    WHERE thread = %s""",
+                    (-int(deleted), thread, ))
+    cursor.execute("""UPDATE Threads
+                    SET posts = (SELECT COUNT(*) FROM Posts WHERE thread = %s AND isDeleted = 0)
+                    WHERE id = %s """,
+                    (thread, thread,))
+
     db.commit()
 
     return True
@@ -681,6 +734,23 @@ def thread_vote(thread, like=True):
                     points = likes - dislikes
                     WHERE id = %s """ % (field, field, '%s'),
                     (
+                        thread,
+                        ))
+    db.commit()
+
+    return True
+
+def thread_update(thread, fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Threads
+                    SET message = %s,
+                    slug = %s
+                    WHERE id = %s """,
+                    (
+                        fields.get('message'),
+                        fields.get('slug'),
                         thread,
                         ))
     db.commit()
