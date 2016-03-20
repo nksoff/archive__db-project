@@ -230,7 +230,7 @@ def user_list_followers(email, limit=0, order='desc', since_id=None, full=False)
     qargs = [email]
 
     if since_id is not None:
-        q += " AND u.id > %s "
+        q += " AND u.id >= %s "
         qargs.append(since_id)
 
     if order not in ['desc', 'asc']:
@@ -268,7 +268,7 @@ def user_list_following(email, limit=0, order='desc', since_id=None, full=False)
     qargs = [email]
 
     if since_id is not None:
-        q += " AND u.id > %s "
+        q += " AND u.id >= %s "
         qargs.append(since_id)
 
     if order not in ['desc', 'asc']:
@@ -403,14 +403,14 @@ def forum_users(forum, limit=0, order='desc', since_id=None, full=False):
     db = get_db()
     cursor = db.cursor()
 
-    q = """SELECT u.email
+    q = """SELECT DISTINCT u.email
             FROM Posts p
             INNER JOIN Users u ON u.email = p.user
             WHERE p.forum = %s """
     qargs = [forum]
 
     if since_id is not None:
-        q += " AND u.id > %s "
+        q += " AND u.id >= %s "
         qargs.append(since_id)
 
     if order not in ['desc', 'asc']:
@@ -429,7 +429,7 @@ def forum_users(forum, limit=0, order='desc', since_id=None, full=False):
         return emails
 
     res = []
-    if len(emails):
+    if emails:
         users = users_data(emails)
         for email in emails:
             res.append(users.get(email))
@@ -535,7 +535,7 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
         qargs.append(search_fields.get(k))
 
     if since_date is not None:
-        q += " AND `date` > %s "
+        q += " AND `date` >= %s "
         qargs.append(since_date)
 
     if order not in ['desc', 'asc']:
@@ -571,12 +571,12 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
         res.append(rowres)
         row = cursor.fetchone()
 
-    if 'forum' in related:
+    if 'forum' in related and forums:
         forums = forums_data(forums)
         for keyn, val in enumerate(res):
             res[keyn]['forum'] = forums.get(val['forum'])
 
-    if 'user' in related:
+    if 'user' in related and users:
         users = users_data(users)
         for keyn, val in enumerate(res):
             res[keyn]['user'] = users.get(val['user'])
@@ -683,7 +683,7 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
         qargs.append(search_fields.get(k))
 
     if since_date is not None:
-        q += " AND `date` > %s "
+        q += " AND `date` >= %s "
         qargs.append(since_date)
 
     if order not in ['desc', 'asc']:
@@ -722,17 +722,17 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
         res.append(rowres)
         row = cursor.fetchone()
 
-    if 'forum' in related:
+    if 'forum' in related and forums:
         forums = forums_data(forums)
         for keyn, val in enumerate(res):
             res[keyn]['forum'] = forums.get(val['forum'])
 
-    if 'thread' in related:
+    if 'thread' in related and threads:
         threads = threads_data(threads)
         for keyn, val in enumerate(res):
             res[keyn]['thread'] = threads.get(val['thread'])
 
-    if 'user' in related:
+    if 'user' in related and users:
         users = users_data(users)
         for keyn, val in enumerate(res):
             res[keyn]['user'] = users.get(val['user'])
