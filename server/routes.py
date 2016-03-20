@@ -349,14 +349,13 @@ def thread_list_posts():
     order = get_request_arg('order', 'desc')
     sort = get_request_arg('sort', 'flat')
 
-    # TODO: sorts!!!
     if not check_arg(sort, ['flat', 'tree', 'parent_tree']):
         return result_invalid_semantic("Wrong value for sort")
 
     if not check_arg(order, ['desc', 'asc']):
         return result_invalid_semantic("Wrong value for order")
 
-    posts = model.thread_posts(thread, limit=limit, order=order, since_date=since_date)
+    posts = model.thread_posts(thread, limit=limit, order=order, since_date=since_date, sort=sort)
     return result(posts)
 
 @app.route('/db/api/thread/open/', methods=['POST'])

@@ -2,6 +2,7 @@
 from _mysql_exceptions import IntegrityError
 from app import *
 from helpers import date_normal
+import datetime
 
 def status():
     db = get_db()
@@ -594,8 +595,8 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
 
     return res
 
-def thread_posts(thread, limit=0, order='desc', since_date=None, related=[]):
-    return posts_list({ 'thread' : thread }, limit, order, since_date, related)
+def thread_posts(thread, limit=0, order='desc', since_date=None, related=[], sort='flat'):
+    return posts_list({ 'thread' : thread }, limit, order, since_date, related, sort)
 
 def thread_exists(thread):
     db = get_db()
@@ -645,11 +646,12 @@ def post_create(fields):
     cursor = db.cursor()
 
     try:
-        sorter = fields.get('thread')
+        sorter = sorter_date = str(fields.get('thread'))
 
         if fields.get('parent') is not None:
             parent_data = post_data(fields.get('parent'))
             sorter = parent_data.get('sorter')
+            sorter_date = parent_data.get('sorter_date')
 
         cursor.execute("""INSERT INTO
                     Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
@@ -670,11 +672,14 @@ def post_create(fields):
 
         id = cursor.lastrowid
 
+        sorter_date_part = fields.get('date').replace('-', '').replace(':', '').replace(' ', '')[2:]
         cursor.execute("""UPDATE Posts
-                            SET sorter = %s
+                            SET sorter = %s,
+                            sorter_date = %s
                             WHERE id = %s""",
                             (
                                 str(sorter) + "." + str(id),
+                                str(sorter_date) + "-" + sorter_date_part + "-" + str(id),
                                 id,
                             ))
 
@@ -776,7 +781,7 @@ def post_data(post, related=[], counters=True):
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum, sorter
+    cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum, sorter, sorter_date
                     FROM Posts
                     WHERE id = %s""",
                     (post, ))
@@ -808,7 +813,12 @@ def post_data(post, related=[], counters=True):
 
     return res
 
-def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]):
+def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[], sort='flat'):
+    if sort == 'tree':
+        return posts_list_tree(search_fields, limit, order, since_date, related)
+    if sort == 'parent_tree':
+        return posts_list_parent_tree(search_fields, limit, order, since_date, related)
+
     db = get_db()
     cursor = db.cursor()
 
@@ -876,6 +886,112 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
         users = users_data(users)
         for keyn, val in enumerate(res):
             res[keyn]['user'] = users.get(val['user'])
+
+    return res
+
+def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None, related=[]):
+    db = get_db()
+    cursor = db.cursor()
+
+    q = """SELECT p.*, (p.likes - p.dislikes) AS points
+            FROM Posts p
+            WHERE 1=1 """
+    qargs = []
+
+    for k in search_fields:
+        q += "AND p.%s = " % k
+        q += " %s "
+        qargs.append(search_fields.get(k))
+
+    if since_date is not None:
+        q += " AND p.`date` >= %s "
+        qargs.append(since_date)
+
+    if order not in ['desc', 'asc']:
+        order = 'desc'
+
+    q += " AND (LENGTH(sorter) - LENGTH(REPLACE(sorter, '.', ''))) = 1"
+    q += " ORDER BY sorter_date " + order
+
+    if limit:
+        q += " LIMIT " + str(limit)
+
+    cursor.execute(q, tuple(qargs))
+
+    res = []
+    ids = []
+    row = cursor.fetchone()
+
+    while row is not None:
+        rowres = {}
+        for keyn, val in enumerate(row):
+            field = cursor.description[keyn][0]
+            if field == 'date':
+                val = date_normal(val)
+            if field[0:2] == 'is':
+                val = bool(val)
+            rowres[field] = val
+
+        ids.append(rowres['sorter'])
+        res.append(rowres)
+        row = cursor.fetchone()
+
+    if not ids:
+        return res
+
+    ids = ' OR '.join(["sorter LIKE '" + id  + ".%'" for id in ids])
+    cursor.execute("""SELECT *, (likes - dislikes) AS points
+                FROM Posts
+                WHERE 0=1 OR %s""" % ids)
+
+    childs = {}
+
+    row = cursor.fetchone()
+
+    while row is not None:
+        rowres = {}
+        for keyn, val in enumerate(row):
+            field = cursor.description[keyn][0]
+            if field == 'date':
+                val = date_normal(val)
+            if field[0:2] == 'is':
+                val = bool(val)
+            rowres[field] = val
+
+        row = cursor.fetchone()
+        if childs.has_key(rowres['parent']):
+            childs.get(rowres['parent']).append(rowres)
+        else:
+            childs[rowres['parent']] = [rowres]
+
+    def find_childs(cur):
+        if childs.has_key(cur.get('id')):
+            for keyn, val in enumerate(childs[cur.get('id')]):
+                child_childs = find_childs(val)
+                if child_childs:
+                    val['childs'] = child_childs
+            return childs[cur.get('id')]
+        return []
+
+    for keyn, val in enumerate(res):
+        cur_childs = find_childs(val)
+
+        if cur_childs:
+            val['childs'] = cur_childs
+
+    def _flatten_tree(tree, arr, order):
+        for node in tree:
+            arr.append(node)
+            _childs = node.get('childs', [])
+            get_datetime = lambda obj: datetime.datetime.strptime(obj.get('date'), '%Y-%m-%d %H:%M:%S')
+            order = order == 'desc'
+            _childs.sort(key=get_datetime, reverse=order)
+            _flatten_tree(_childs, arr, order)
+            if node.has_key('childs'):
+                del node['childs']
+        return arr
+
+    res = _flatten_tree(res, [], order)
 
     return res
 
