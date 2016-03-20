@@ -645,6 +645,12 @@ def post_create(fields):
     cursor = db.cursor()
 
     try:
+        sorter = fields.get('thread')
+
+        if fields.get('parent') is not None:
+            parent_data = post_data(fields.get('parent'))
+            sorter = parent_data.get('sorter')
+
         cursor.execute("""INSERT INTO
                     Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -661,7 +667,17 @@ def post_create(fields):
                         fields.get('thread'),
                         fields.get('forum')
                         ))
-        res = cursor.lastrowid
+
+        id = cursor.lastrowid
+
+        cursor.execute("""UPDATE Posts
+                            SET sorter = %s
+                            WHERE id = %s""",
+                            (
+                                str(sorter) + "." + str(id),
+                                id,
+                            ))
+
         cursor.execute("""UPDATE Threads
                             SET posts = posts + 1
                             WHERE id = %s""",
@@ -671,7 +687,7 @@ def post_create(fields):
 
         db.commit()
 
-        return res
+        return id
     except IntegrityError:
         return False
 
@@ -760,7 +776,7 @@ def post_data(post, related=[], counters=True):
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum
+    cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum, sorter
                     FROM Posts
                     WHERE id = %s""",
                     (post, ))
