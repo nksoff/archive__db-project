@@ -758,6 +758,19 @@ def post_set_deleted(post, deleted=True):
                     SET isDeleted = %s
                     WHERE id = %s """,
                     (deleted, post,))
+
+    pdata = post_data(post)
+
+    sign = '-'
+    if not deleted:
+        sign = '+'
+
+    cursor.execute("""UPDATE Threads
+                        SET posts = posts %s 1
+                        WHERE id = %s""" % (sign, '%s'),
+                        (
+                            pdata.get('thread'),
+                        ))
     db.commit()
 
     return True
@@ -767,3 +780,37 @@ def post_remove(post):
 
 def post_restore(post):
     return post_set_deleted(post, False)
+
+def post_update(post, fields):
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""UPDATE Posts
+                    SET message = %s
+                    WHERE id = %s """,
+                    (
+                        fields.get('message'),
+                        post,
+                        ))
+    db.commit()
+
+    return True
+
+def post_vote(post, like=True):
+    db = get_db()
+    cursor = db.cursor()
+
+    field = 'likes'
+    if not like:
+        field = 'dis' + field
+
+    cursor.execute("""UPDATE Posts
+                    SET %s = %s + 1,
+                    points = likes - dislikes
+                    WHERE id = %s """ % (field, field, '%s'),
+                    (
+                        post,
+                        ))
+    db.commit()
+
+    return True

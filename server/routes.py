@@ -434,8 +434,6 @@ def post_details():
 
 @app.route('/db/api/post/list/', methods=['GET'])
 def post_list():
-    # TODO:
-    return result({})
     limit = get_request_arg('limit', 0)
     since_date = get_request_arg('since')
     order = get_request_arg('order', 'desc')
@@ -448,15 +446,15 @@ def post_list():
         if not model.forum_exists(forum):
             return result_not_found("Forum %s doesn't exist" % forum)
 
-        threads = model.forum_threads(forum, limit=limit, order=order, since_date=since_date)
-        return result(threads)
+        posts = model.forum_posts(forum, limit=limit, order=order, since_date=since_date)
+        return result(posts)
 
     thread = get_request_arg('thread')
     if thread is not None:
         if not model.thread_exists(thread):
             return result_not_found("Thread %s doesn't exist" % thread)
 
-        posts = model.threads_posts(thread, limit=limit, order=order, since_date=since_date)
+        posts = model.thread_posts(thread, limit=limit, order=order, since_date=since_date)
         return result(posts)
 
     return result_invalid_semantic("Thread and forum are not set")
@@ -485,10 +483,34 @@ def post_restore():
 
 @app.route('/db/api/post/update/', methods=['POST'])
 def post_update():
-    # TODO:
-    return result({})
+    pdata = get_request_json()
+    post = pdata.get('post')
+
+    if not model.post_exists(post):
+        return result_not_found("Post %s doesn't exist" % post)
+
+    res = model.post_update(post, pdata)
+    pdata = model.post_data(post)
+    if pdata:
+        return result(pdata)
+    else:
+        return result_unknown("Couldn't update post %s" % post)
 
 @app.route('/db/api/post/vote/', methods=['POST'])
 def post_vote():
-    # TODO:
-    return result({})
+    pdata = get_request_json()
+    post = pdata.get('post')
+    vote = int(pdata.get('vote'))
+
+    if not model.post_exists(post):
+        return result_not_found("Post %s doesn't exist" % post)
+
+    if not check_arg(vote, [-1, 1]):
+        return result_invalid_semantic("Wrong value for vote")
+
+    res = model.post_vote(post, vote > 0)
+    pdata = model.post_data(post)
+    if pdata:
+        return result(pdata)
+    else:
+        return result_unknown("Couldn't vote for post %s" % post)
