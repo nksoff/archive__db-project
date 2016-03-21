@@ -890,73 +890,11 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
     return res
 
 def posts_list_tree(search_fields, limit=0, order='desc', since_date=None, related=[]):
-    db = get_db()
-    cursor = db.cursor()
-
-    q = """SELECT p.*, (p.likes - p.dislikes) AS points
-            FROM Posts p
-            WHERE 1=1 """
-    qargs = []
-
-    for k in search_fields:
-        q += "AND p.%s = " % k
-        q += " %s "
-        qargs.append(search_fields.get(k))
-
-    if since_date is not None:
-        q += " AND p.`date` >= %s "
-        qargs.append(since_date)
-
-    if order not in ['desc', 'asc']:
-        order = 'desc'
-
-    q += " ORDER BY sorter_date " + order
-
-    if limit:
-        q += " LIMIT " + str(limit)
-
-    cursor.execute(q, tuple(qargs))
-    print cursor._executed
-
-    res = []
-
-    temp = []
-    def check_temp(level):
-        k = 0
-        while k < len(temp):
-            if temp[k].get('sorter').count('.') == level:
-                res.append(temp.pop(k))
-                continue
-            k += 1
-
-    row = cursor.fetchone()
-    while row is not None:
-        rowres = {}
-        for keyn, val in enumerate(row):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            rowres[field] = val
-
-        level = rowres.get('sorter').count('.')
-
-        if level > 1:
-            temp.append(rowres)
-        else:
-            res.append(rowres)
-            i = 2
-            while len(temp) and i < 50:
-                check_temp(i)
-                i = i + 1
-
-        row = cursor.fetchone()
-        print row
+    res = posts_list_parent_tree(search_fields, limit, order, since_date, related, True)
 
     return res
 
-def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None, related=[]):
+def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None, related=[], limit_total=False):
     db = get_db()
     cursor = db.cursor()
 
@@ -1046,19 +984,22 @@ def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None
         if cur_childs:
             val['childs'] = cur_childs
 
-    def _flatten_tree(tree, arr, order):
+    def _flatten_tree(tree, arr, order, reverse_childs=False):
+        get_datetime = lambda obj: datetime.datetime.strptime(obj.get('date'), '%Y-%m-%d %H:%M:%S')
+        order = True if order in['desc', True] else False
         for node in tree:
             arr.append(node)
             _childs = node.get('childs', [])
-            get_datetime = lambda obj: datetime.datetime.strptime(obj.get('date'), '%Y-%m-%d %H:%M:%S')
-            order = order == 'desc'
             _childs.sort(key=get_datetime, reverse=order)
-            _flatten_tree(_childs, arr, order)
+            _flatten_tree(_childs, arr, order, reverse_childs)
             if node.has_key('childs'):
                 del node['childs']
         return arr
 
-    res = _flatten_tree(res, [], order)
+    res = _flatten_tree(res, [], order, limit_total)
+
+    if limit_total and limit:
+        return res[:int(limit)]
 
     return res
 
