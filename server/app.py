@@ -10,7 +10,6 @@ database_config = {
         'db': 'db'
         }
 
-
 def get_db():
     database = MySQLdb.connect(**database_config)
     database.set_character_set('utf8')

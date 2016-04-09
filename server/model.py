@@ -4,10 +4,10 @@ from app import *
 from helpers import date_normal
 import datetime
 
-def status():
-    db = get_db()
-    cursor = db.cursor()
+from model_helpers import model_method, model_dict
 
+@model_method
+def status(db, cursor):
     res = {}
 
     for entity in ['user', 'thread', 'forum', 'post']:
@@ -17,20 +17,16 @@ def status():
 
     return res
 
-def clear():
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def clear(db, cursor):
     for entity in ['follower', 'subscription', 'post', 'thread', 'forum', 'user']:
         cursor.execute('TRUNCATE %ss' % entity.capitalize())
 
     db.commit()
     return True
 
-def user_create(fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_create(db, cursor, fields):
     try:
         cursor.execute("""INSERT INTO
                     Users (username, about, name, email, isAnonymous)
@@ -48,10 +44,8 @@ def user_create(fields):
     except IntegrityError:
         return False
 
-def user_exists(email):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_exists(db, cursor, email):
     cursor.execute("""SELECT 1
                     FROM Users
                     WHERE email = %s""",
@@ -59,10 +53,8 @@ def user_exists(email):
 
     return cursor.rowcount > 0
 
-def user_data(email, follow_data=True, subscriptions=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_data(db, cursor, email, follow_data=True, subscriptions=True):
     cursor.execute("""SELECT id, username, about, name, email, isAnonymous
                     FROM Users
                     WHERE email = %s""",
@@ -71,13 +63,8 @@ def user_data(email, follow_data=True, subscriptions=True):
     if cursor.rowcount == 0:
         return None
 
-    res = {}
     udata = cursor.fetchone()
-    for keyn, val in enumerate(udata):
-        field = cursor.description[keyn][0]
-        if field[0:2] == 'is':
-            val = bool(val)
-        res[field] = val
+    res = model_dict(udata, cursor.description)
 
     if follow_data:
         res['followers'] = user_list_followers(email)
@@ -96,10 +83,8 @@ def user_data(email, follow_data=True, subscriptions=True):
 def user_data_short(email):
     return user_data(email, follow_data=False, subscriptions=False)
 
-def users_data(emails, follow_data=True, subscriptions=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def users_data(db, cursor, emails, follow_data=True, subscriptions=True):
     cursor.execute("""SELECT id, username, about, name, email, isAnonymous
                     FROM Users
                     WHERE email IN (%s)"""
@@ -109,12 +94,7 @@ def users_data(emails, follow_data=True, subscriptions=True):
     udata = cursor.fetchone()
 
     while udata is not None:
-        ures = {}
-        for keyn, val in enumerate(udata):
-            field = cursor.description[keyn][0]
-            if field[0:2] == 'is':
-                val = bool(val)
-            ures[field] = val
+        ures = model_dict(udata, cursor.description)
         res[ures['email']] = ures
 
         udata = cursor.fetchone()
@@ -177,10 +157,8 @@ def users_data(emails, follow_data=True, subscriptions=True):
 
     return res
 
-def user_follow(follower, followee):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_follow(db, cursor, follower, followee):
     try:
         cursor.execute("""INSERT INTO
                     Followers (followee, follower)
@@ -194,10 +172,8 @@ def user_follow(follower, followee):
     except IntegrityError:
         return False
 
-def user_unfollow(follower, followee):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_unfollow(db, cursor, follower, followee):
     cursor.execute("""DELETE
                 FROM Followers 
                 WHERE followee = %s AND follower = %s""",
@@ -209,10 +185,8 @@ def user_unfollow(follower, followee):
 
     return cursor.rowcount > 0
 
-def user_follows(follower, followee):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_follows(db, cursor, follower, followee):
     cursor.execute(""" SELECT 1
                     FROM Followers
                     WHERE follower = %s AND followee = %s """,
@@ -220,10 +194,8 @@ def user_follows(follower, followee):
 
     return cursor.rowcount > 0
 
-def user_subscribed(email, thread):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_subscribed(db, cursor, email, thread):
     cursor.execute(""" SELECT 1
                     FROM Subscriptions
                     WHERE user = %s AND thread = %s """,
@@ -231,10 +203,8 @@ def user_subscribed(email, thread):
 
     return cursor.rowcount > 0
 
-def user_list_followers(email, limit=0, order='desc', since_id=None, full=False):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_list_followers(db, cursor, email, limit=0, order='desc', since_id=None, full=False):
     q = """SELECT f.follower
             FROM Followers f
             INNER JOIN Users u ON u.email = f.follower
@@ -268,11 +238,8 @@ def user_list_followers(email, limit=0, order='desc', since_id=None, full=False)
 
     return res
 
-
-def user_list_following(email, limit=0, order='desc', since_id=None, full=False):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_list_following(db, cursor, email, limit=0, order='desc', since_id=None, full=False):
     q = """SELECT f.followee
             FROM Followers f
             INNER JOIN Users u ON u.email = f.follower
@@ -306,10 +273,8 @@ def user_list_following(email, limit=0, order='desc', since_id=None, full=False)
 
     return res
 
-def user_update(email, fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def user_update(db, cursor, email, fields):
     cursor.execute("""UPDATE Users 
                     SET about = %s, name = %s
                     WHERE email = %s """,
@@ -328,11 +293,8 @@ def user_posts(email, limit=0, order='desc', since_date=None, related=[]):
 def user_threads(email, limit=0, order='desc', since_date=None, related=[]):
     return threads_list({ 'user' : email }, limit, order, since_date, related)
 
-def forum_create(fields):
-    db = get_db()
-    cursor = db.cursor()
-
-
+@model_method
+def forum_create(db, cursor, fields):
     try:
         cursor.execute("""INSERT INTO
                     Forums (name, short_name, user)
@@ -348,10 +310,8 @@ def forum_create(fields):
     except IntegrityError:
         return False
 
-def forum_data(forum, related=[]):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def forum_data(db, cursor, forum, related=[]):
     cursor.execute("""SELECT id, name, short_name, user
                     FROM Forums
                     WHERE short_name = %s""",
@@ -360,21 +320,16 @@ def forum_data(forum, related=[]):
     if cursor.rowcount == 0:
         return None
 
-    res = {}
     fdata = cursor.fetchone()
-    for keyn, val in enumerate(fdata):
-        field = cursor.description[keyn][0]
-        res[field] = val
+    res = model_dict(fdata, cursor.description)
 
     if 'user' in related:
         res['user'] = user_data(res['user'])
 
     return res
 
-def forums_data(forums):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def forums_data(db, cursor, forums):
     cursor.execute("""SELECT id, name, short_name, user
                     FROM Forums
                     WHERE short_name IN (%s)"""
@@ -384,20 +339,15 @@ def forums_data(forums):
     fdata = cursor.fetchone()
 
     while fdata is not None:
-        fres = {}
-        for keyn, val in enumerate(fdata):
-            field = cursor.description[keyn][0]
-            fres[field] = val
+        fres = model_dict(fdata, cursor.description)
         res[fres['short_name']] = fres
 
         fdata = cursor.fetchone()
 
     return res
 
-def forum_exists(forum):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def forum_exists(db, cursor, forum):
     cursor.execute("""SELECT 1
                     FROM Forums
                     WHERE short_name = %s""",
@@ -411,10 +361,8 @@ def forum_posts(forum, limit=0, order='desc', since_date=None, related=[]):
 def forum_threads(forum, limit=0, order='desc', since_date=None, related=[]):
     return threads_list({ 'forum' : forum }, limit, order, since_date, related)
 
-def forum_users(forum, limit=0, order='desc', since_id=None, full=False):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def forum_users(db, cursor, forum, limit=0, order='desc', since_id=None, full=False):
     q = """SELECT DISTINCT u.email
             FROM Posts p
             INNER JOIN Users u ON u.email = p.user
@@ -448,10 +396,8 @@ def forum_users(forum, limit=0, order='desc', since_id=None, full=False):
 
     return res
 
-def thread_create(fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_create(db, cursor, fields):
     try:
         cursor.execute("""INSERT INTO
                     Threads (title, slug, message, date, isClosed, isDeleted, forum, user)
@@ -472,10 +418,8 @@ def thread_create(fields):
     except IntegrityError:
         return False
 
-def thread_data(thread, related=[], counters=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_data(db, cursor, thread, related=[], counters=True):
     cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, (likes - dislikes) AS points, isClosed, isDeleted, posts, forum, user
                     FROM Threads
                     WHERE id = %s""",
@@ -484,18 +428,11 @@ def thread_data(thread, related=[], counters=True):
     if cursor.rowcount == 0:
         return None
 
-    res = {}
     tdata = cursor.fetchone()
-    for keyn, val in enumerate(tdata):
-        field = cursor.description[keyn][0]
-        if field == 'date':
-            val = date_normal(val)
-        if field[0:2] == 'is':
-            val = bool(val)
-
-        if not counters and field in ['likes', 'dislikes', 'posts']:
-            continue
-        res[field] = val
+    remove = []
+    if not counters:
+        remove = ['likes', 'dislikes', 'points']
+    res = model_dict(tdata, cursor.description, remove=remove)
 
     if 'user' in related:
         res['user'] = user_data(res['user'])
@@ -505,10 +442,8 @@ def thread_data(thread, related=[], counters=True):
 
     return res
 
-def threads_data(threads):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def threads_data(db, cursor, threads):
     cursor.execute("""SELECT id, title, slug, message, date, likes, dislikes, (likes - dislikes) AS points, isClosed, isDeleted, posts, forum, user
                     FROM Threads
                     WHERE id IN (%s)"""
@@ -518,24 +453,15 @@ def threads_data(threads):
     tdata = cursor.fetchone()
 
     while tdata is not None:
-        tres = {}
-        for keyn, val in enumerate(tdata):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            tres[field] = val
+        tres = model_dict(tdata, cursor.description)
         res[tres['id']] = tres
 
         tdata = cursor.fetchone()
 
     return res
 
-def threads_list(search_fields, limit=0, order='desc', since_date=None, related=[]):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def threads_list(db, cursor, search_fields, limit=0, order='desc', since_date=None, related=[]):
     q = """SELECT *, (likes - dislikes) AS points
             FROM Threads
             WHERE 1=1 """
@@ -567,14 +493,7 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
     users = []
 
     while row is not None:
-        rowres = {}
-        for keyn, val in enumerate(row):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            rowres[field] = val
+        rowres = model_dict(row, cursor.description)
 
         if 'forum' in related:
             forums.append(rowres['forum'])
@@ -598,10 +517,8 @@ def threads_list(search_fields, limit=0, order='desc', since_date=None, related=
 def thread_posts(thread, limit=0, order='desc', since_date=None, related=[], sort='flat'):
     return posts_list({ 'thread' : thread }, limit, order, since_date, related, sort)
 
-def thread_exists(thread):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_exists(db, cursor, thread):
     cursor.execute("""SELECT 1
                     FROM Threads
                     WHERE id = %s""",
@@ -609,10 +526,8 @@ def thread_exists(thread):
 
     return cursor.rowcount > 0
 
-def thread_subscribe(user, thread):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_subscribe(db, cursor, user, thread):
     try:
         cursor.execute("""INSERT INTO
                     Subscriptions (thread, user)
@@ -626,10 +541,8 @@ def thread_subscribe(user, thread):
     except IntegrityError:
         return False
 
-def thread_unsubscribe(user, thread):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_unsubscribe(db, cursor, user, thread):
     cursor.execute("""DELETE
                 FROM Subscriptions 
                 WHERE thread = %s AND user = %s""",
@@ -641,10 +554,8 @@ def thread_unsubscribe(user, thread):
 
     return cursor.rowcount > 0
 
-def post_create(fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_create(db, cursor, fields):
     try:
         sorter = sorter_date = str(fields.get('thread'))
 
@@ -696,10 +607,8 @@ def post_create(fields):
     except IntegrityError:
         return False
 
-def thread_set_closed(thread, closed=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_set_closed(db, cursor, thread, closed=True):
     cursor.execute("""UPDATE Threads
                     SET isClosed = %s
                     WHERE id = %s """,
@@ -714,7 +623,8 @@ def thread_close(thread):
 def thread_open(thread):
     return thread_set_closed(thread, False)
 
-def thread_set_deleted(thread, deleted=True):
+@model_method
+def thread_set_deleted(db, cursor, thread, deleted=True):
     db = get_db()
     cursor = db.cursor()
 
@@ -742,10 +652,8 @@ def thread_remove(thread):
 def thread_restore(thread):
     return thread_set_deleted(thread, False)
 
-def thread_vote(thread, like=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_vote(db, cursor, thread, like=True):
     field = 'likes'
     if not like:
         field = 'dis' + field
@@ -760,10 +668,8 @@ def thread_vote(thread, like=True):
 
     return True
 
-def thread_update(thread, fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def thread_update(db, cursor, thread, fields):
     cursor.execute("""UPDATE Threads
                     SET message = %s,
                     slug = %s
@@ -777,10 +683,8 @@ def thread_update(thread, fields):
 
     return True
 
-def post_data(post, related=[], counters=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_data(db, cursor, post, related=[], counters=True):
     cursor.execute("""SELECT id, message, date, likes, dislikes, (likes - dislikes) AS points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum, sorter, sorter_date
                     FROM Posts
                     WHERE id = %s""",
@@ -789,18 +693,11 @@ def post_data(post, related=[], counters=True):
     if cursor.rowcount == 0:
         return None
 
-    res = {}
     pdata = cursor.fetchone()
-    for keyn, val in enumerate(pdata):
-        field = cursor.description[keyn][0]
-        if field == 'date':
-            val = date_normal(val)
-        if field[0:2] == 'is':
-            val = bool(val)
-
-        if not counters and field in ['likes', 'dislikes', 'points']:
-            continue
-        res[field] = val
+    remove = []
+    if not counters:
+        remove = ['likes', 'dislikes', 'points']
+    res = model_dict(pdata, cursor.description, remove=remove)
 
     if 'user' in related:
         res['user'] = user_data(res['user'])
@@ -813,14 +710,12 @@ def post_data(post, related=[], counters=True):
 
     return res
 
-def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[], sort='flat'):
+@model_method
+def posts_list(db, cursor, search_fields, limit=0, order='desc', since_date=None, related=[], sort='flat'):
     if sort == 'tree':
         return posts_list_tree(search_fields, limit, order, since_date, related)
     if sort == 'parent_tree':
         return posts_list_parent_tree(search_fields, limit, order, since_date, related)
-
-    db = get_db()
-    cursor = db.cursor()
 
     q = """SELECT *, (likes - dislikes) AS points
             FROM Posts
@@ -854,14 +749,7 @@ def posts_list(search_fields, limit=0, order='desc', since_date=None, related=[]
     users = []
 
     while row is not None:
-        rowres = {}
-        for keyn, val in enumerate(row):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            rowres[field] = val
+        rowres = model_dict(row, cursor.description)
 
         if 'forum' in related:
             forums.append(rowres['forum'])
@@ -894,7 +782,8 @@ def posts_list_tree(search_fields, limit=0, order='desc', since_date=None, relat
 
     return res
 
-def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None, related=[], limit_total=False):
+@model_method
+def posts_list_parent_tree(db, cursor, search_fields, limit=0, order='desc', since_date=None, related=[], limit_total=False):
     db = get_db()
     cursor = db.cursor()
 
@@ -928,14 +817,7 @@ def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None
     row = cursor.fetchone()
 
     while row is not None:
-        rowres = {}
-        for keyn, val in enumerate(row):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            rowres[field] = val
+        rowres = model_dict(row, cursor.description)
 
         ids.append(rowres['sorter'])
         res.append(rowres)
@@ -954,14 +836,7 @@ def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None
     row = cursor.fetchone()
 
     while row is not None:
-        rowres = {}
-        for keyn, val in enumerate(row):
-            field = cursor.description[keyn][0]
-            if field == 'date':
-                val = date_normal(val)
-            if field[0:2] == 'is':
-                val = bool(val)
-            rowres[field] = val
+        rowres = model_dict(row, cursor.description)
 
         row = cursor.fetchone()
         if childs.has_key(rowres['parent']):
@@ -1003,10 +878,8 @@ def posts_list_parent_tree(search_fields, limit=0, order='desc', since_date=None
 
     return res
 
-def post_exists(post):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_exists(db, cursor, post):
     cursor.execute("""SELECT 1
                     FROM Posts
                     WHERE id = %s""",
@@ -1014,10 +887,8 @@ def post_exists(post):
 
     return cursor.rowcount > 0
 
-def post_set_deleted(post, deleted=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_set_deleted(db, cursor, post, deleted=True):
     cursor.execute("""UPDATE Posts
                     SET isDeleted = %s
                     WHERE id = %s """,
@@ -1045,10 +916,8 @@ def post_remove(post):
 def post_restore(post):
     return post_set_deleted(post, False)
 
-def post_update(post, fields):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_update(db, cursor, post, fields):
     cursor.execute("""UPDATE Posts
                     SET message = %s
                     WHERE id = %s """,
@@ -1060,10 +929,8 @@ def post_update(post, fields):
 
     return True
 
-def post_vote(post, like=True):
-    db = get_db()
-    cursor = db.cursor()
-
+@model_method
+def post_vote(db, cursor, post, like=True):
     field = 'likes'
     if not like:
         field = 'dis' + field

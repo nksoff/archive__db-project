@@ -22,7 +22,7 @@ def get_request_arg(key, default=None):
 def get_request_args(key):
     return request.values.getlist(key)
 
-def result(response, code = CODE_SUCCESS):
+def result(response, code=CODE_SUCCESS):
     return jsonify({
         'code': code,
         'response': response
