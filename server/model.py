@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-from _mysql_exceptions import IntegrityError
 from app import *
-from helpers import date_normal
 import datetime
 
 from model_helpers import model_method, model_dict
@@ -27,22 +25,19 @@ def clear(db, cursor):
 
 @model_method
 def user_create(db, cursor, fields):
-    try:
-        cursor.execute("""INSERT INTO
-                    Users (username, about, name, email, isAnonymous)
-                    VALUES (%s, %s, %s, %s, %s)""",
-                    (
-                        fields.get('username'),
-                        fields.get('about'),
-                        fields.get('name'),
-                        fields.get('email'),
-                        fields.get('isAnonymous', False)
-                        ))
-        db.commit()
+    cursor.execute("""INSERT INTO
+                Users (username, about, name, email, isAnonymous)
+                VALUES (%s, %s, %s, %s, %s)""",
+                (
+                    fields.get('username'),
+                    fields.get('about'),
+                    fields.get('name'),
+                    fields.get('email'),
+                    fields.get('isAnonymous', False)
+                    ))
+    db.commit()
 
-        return cursor.rowcount > 0
-    except IntegrityError:
-        return False
+    return cursor.rowcount > 0
 
 @model_method
 def user_exists(db, cursor, email):
@@ -159,18 +154,15 @@ def users_data(db, cursor, emails, follow_data=True, subscriptions=True):
 
 @model_method
 def user_follow(db, cursor, follower, followee):
-    try:
-        cursor.execute("""INSERT INTO
-                    Followers (followee, follower)
-                    VALUES (%s, %s)""",
-                    (
-                        followee,
-                        follower
-                        ))
-        db.commit()
-        return cursor.rowcount > 0
-    except IntegrityError:
-        return False
+    cursor.execute("""INSERT INTO
+                Followers (followee, follower)
+                VALUES (%s, %s)""",
+                (
+                    followee,
+                    follower
+                    ))
+    db.commit()
+    return cursor.rowcount > 0
 
 @model_method
 def user_unfollow(db, cursor, follower, followee):
@@ -295,20 +287,17 @@ def user_threads(email, limit=0, order='desc', since_date=None, related=[]):
 
 @model_method
 def forum_create(db, cursor, fields):
-    try:
-        cursor.execute("""INSERT INTO
-                    Forums (name, short_name, user)
-                    VALUES (%s, %s, %s)""",
-                    (
-                        fields.get('name'),
-                        fields.get('short_name'),
-                        fields.get('user')
-                        ))
-        db.commit()
+    cursor.execute("""INSERT INTO
+                Forums (name, short_name, user)
+                VALUES (%s, %s, %s)""",
+                (
+                    fields.get('name'),
+                    fields.get('short_name'),
+                    fields.get('user')
+                    ))
+    db.commit()
 
-        return cursor.rowcount > 0
-    except IntegrityError:
-        return False
+    return cursor.rowcount > 0
 
 @model_method
 def forum_data(db, cursor, forum, related=[]):
@@ -398,25 +387,22 @@ def forum_users(db, cursor, forum, limit=0, order='desc', since_id=None, full=Fa
 
 @model_method
 def thread_create(db, cursor, fields):
-    try:
-        cursor.execute("""INSERT INTO
-                    Threads (title, slug, message, date, isClosed, isDeleted, forum, user)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (
-                        fields.get('title'),
-                        fields.get('slug'),
-                        fields.get('message'),
-                        fields.get('date'),
-                        fields.get('isClosed', False),
-                        fields.get('isDeleted', False),
-                        fields.get('forum'),
-                        fields.get('user')
-                        ))
-        db.commit()
+    cursor.execute("""INSERT INTO
+                Threads (title, slug, message, date, isClosed, isDeleted, forum, user)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    fields.get('title'),
+                    fields.get('slug'),
+                    fields.get('message'),
+                    fields.get('date'),
+                    fields.get('isClosed', False),
+                    fields.get('isDeleted', False),
+                    fields.get('forum'),
+                    fields.get('user')
+                    ))
+    db.commit()
 
-        return cursor.lastrowid
-    except IntegrityError:
-        return False
+    return cursor.lastrowid
 
 @model_method
 def thread_data(db, cursor, thread, related=[], counters=True):
@@ -528,18 +514,15 @@ def thread_exists(db, cursor, thread):
 
 @model_method
 def thread_subscribe(db, cursor, user, thread):
-    try:
-        cursor.execute("""INSERT INTO
-                    Subscriptions (thread, user)
-                    VALUES (%s, %s)""",
-                    (
-                        thread,
-                        user
-                        ))
-        db.commit()
-        return cursor.rowcount > 0
-    except IntegrityError:
-        return False
+    cursor.execute("""INSERT INTO
+                Subscriptions (thread, user)
+                VALUES (%s, %s)""",
+                (
+                    thread,
+                    user
+                    ))
+    db.commit()
+    return cursor.rowcount > 0
 
 @model_method
 def thread_unsubscribe(db, cursor, user, thread):
@@ -556,56 +539,53 @@ def thread_unsubscribe(db, cursor, user, thread):
 
 @model_method
 def post_create(db, cursor, fields):
-    try:
-        sorter = sorter_date = str(fields.get('thread'))
+    sorter = sorter_date = str(fields.get('thread'))
 
-        if fields.get('parent') is not None:
-            parent_data = post_data(fields.get('parent'))
-            sorter = parent_data.get('sorter')
-            sorter_date = parent_data.get('sorter_date')
+    if fields.get('parent') is not None:
+        parent_data = post_data(fields.get('parent'))
+        sorter = parent_data.get('sorter')
+        sorter_date = parent_data.get('sorter_date')
 
-        cursor.execute("""INSERT INTO
-                    Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (
-                        fields.get('message'),
-                        fields.get('date'),
-                        fields.get('isApproved', False),
-                        fields.get('isHighlighted', False),
-                        fields.get('isEdited', False),
-                        fields.get('isSpam', False),
-                        fields.get('isDeleted', False),
-                        fields.get('parent', None),
-                        fields.get('user'),
-                        fields.get('thread'),
-                        fields.get('forum')
+    cursor.execute("""INSERT INTO
+                Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    fields.get('message'),
+                    fields.get('date'),
+                    fields.get('isApproved', False),
+                    fields.get('isHighlighted', False),
+                    fields.get('isEdited', False),
+                    fields.get('isSpam', False),
+                    fields.get('isDeleted', False),
+                    fields.get('parent', None),
+                    fields.get('user'),
+                    fields.get('thread'),
+                    fields.get('forum')
+                    ))
+
+    id = cursor.lastrowid
+
+    sorter_date_part = fields.get('date').replace('-', '').replace(':', '').replace(' ', '')[2:]
+    cursor.execute("""UPDATE Posts
+                        SET sorter = %s,
+                        sorter_date = %s
+                        WHERE id = %s""",
+                        (
+                            str(sorter) + "." + str(id),
+                            str(sorter_date) + "-" + sorter_date_part + "-" + str(id),
+                            id,
                         ))
 
-        id = cursor.lastrowid
+    cursor.execute("""UPDATE Threads
+                        SET posts = posts + 1
+                        WHERE id = %s""",
+                        (
+                            fields.get('thread'),
+                        ))
 
-        sorter_date_part = fields.get('date').replace('-', '').replace(':', '').replace(' ', '')[2:]
-        cursor.execute("""UPDATE Posts
-                            SET sorter = %s,
-                            sorter_date = %s
-                            WHERE id = %s""",
-                            (
-                                str(sorter) + "." + str(id),
-                                str(sorter_date) + "-" + sorter_date_part + "-" + str(id),
-                                id,
-                            ))
+    db.commit()
 
-        cursor.execute("""UPDATE Threads
-                            SET posts = posts + 1
-                            WHERE id = %s""",
-                            (
-                                fields.get('thread'),
-                            ))
-
-        db.commit()
-
-        return id
-    except IntegrityError:
-        return False
+    return id
 
 @model_method
 def thread_set_closed(db, cursor, thread, closed=True):

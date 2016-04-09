@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from _mysql_exceptions import IntegrityError
 from app import *
 from helpers import date_normal
 
@@ -6,7 +7,11 @@ def model_method(func):
     def f(*args, **kwargs):
         db = get_db()
         cursor = db.cursor()
-        res = func(db, cursor, *args, **kwargs)
+
+        try:
+            res = func(db, cursor, *args, **kwargs)
+        except IntegrityError:
+            return False
         cursor.close()
         db.close()
         return res
