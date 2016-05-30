@@ -13,7 +13,6 @@ def model_method(func):
         except IntegrityError:
             return False
         cursor.close()
-        db.close()
         return res
 
     return f
