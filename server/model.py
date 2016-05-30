@@ -17,9 +17,13 @@ def status(db, cursor):
 
 @model_method
 def clear(db, cursor):
+    cursor.execute('SET FOREIGN_KEY_CHECKS=0')
+    db.commit()
     for entity in ['follower', 'subscription', 'post', 'thread', 'forum', 'user']:
         cursor.execute('TRUNCATE %ss' % entity.capitalize())
+        db.commit()
 
+    cursor.execute('SET FOREIGN_KEY_CHECKS=1')
     db.commit()
     return True
 
