@@ -728,7 +728,7 @@ def posts_list(db, cursor, search_fields, limit=0, order='desc', since_date=None
     if order not in ['desc', 'asc']:
         order = 'desc'
 
-    q += " ORDER BY `date` " + order
+    q += " ORDER BY `date` " + order + ", id"
 
     if limit:
         q += " LIMIT " + str(limit)
