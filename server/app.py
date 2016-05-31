@@ -12,6 +12,5 @@ mysql.init_app(app)
 def get_db():
     return mysql.get_db()
 
-global_db = get_db()
 def sql_in(values):
-    return ','.join(map(global_db.literal, values))
+    return ','.join(map(lambda x: '"' + str(x) + '"', values))
