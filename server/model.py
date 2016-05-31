@@ -279,6 +279,13 @@ def user_update(db, cursor, email, fields):
                     fields.get('name'),
                     email
                     ))
+    cursor.execute("""UPDATE Posts
+                    SET user_name = %s
+                    WHERE user = %s """,
+                (
+                    fields.get('name'),
+                    email
+                    ))
     db.commit()
 
     return True
@@ -356,20 +363,22 @@ def forum_threads(forum, limit=0, order='desc', since_date=None, related=[]):
 
 @model_method
 def forum_users(db, cursor, forum, limit=0, order='desc', since_id=None, full=False):
-    q = """SELECT DISTINCT u.email
+    q = """SELECT DISTINCT p.user
             FROM Posts p
             INNER JOIN Users u ON u.email = p.user
             WHERE p.forum = %s """
     qargs = [forum]
 
-    if since_id is not None:
-        q += " AND u.id >= %s "
-        qargs.append(since_id)
+    if since_id is None:
+        since_id = 0
+
+    q += " AND u.id >= %s "
+    qargs.append(since_id)
 
     if order not in ['desc', 'asc']:
         order = 'desc'
 
-    q += " ORDER BY u.name " + order
+    q += " ORDER BY p.user_name " + order
 
     if limit:
         q += " LIMIT " + str(limit)
@@ -551,8 +560,8 @@ def post_create(db, cursor, fields):
         sorter_date = parent_data.get('sorter_date')
 
     cursor.execute("""INSERT INTO
-                Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, thread, forum)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                Posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, user, user_name, thread, forum)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, (SELECT name FROM Users WHERE email = %s),  %s, %s)""",
                 (
                     fields.get('message'),
                     fields.get('date'),
@@ -562,6 +571,7 @@ def post_create(db, cursor, fields):
                     fields.get('isSpam', False),
                     fields.get('isDeleted', False),
                     fields.get('parent', None),
+                    fields.get('user'),
                     fields.get('user'),
                     fields.get('thread'),
                     fields.get('forum')
