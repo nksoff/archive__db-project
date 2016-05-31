@@ -364,12 +364,12 @@ def forum_threads(forum, limit=0, order='desc', since_date=None, related=[]):
 @model_method
 def forum_users(db, cursor, forum, limit=0, order='desc', since_id=None, full=False):
     q = """SELECT DISTINCT p.user
-            FROM Posts p"""
+            FROM Posts p """
 
     if since_id is not None:
         q += """ INNER JOIN Users u ON u.email = p.user """
     
-    q += """WHERE p.forum = %s """
+    q += """ WHERE p.forum = %s """
     qargs = [forum]
 
     if since_id is not None:
