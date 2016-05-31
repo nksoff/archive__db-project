@@ -859,13 +859,13 @@ def posts_list_parent_tree(db, cursor, search_fields, limit=0, order='desc', sin
         for node in tree:
             arr.append(node)
             _childs = node.get('childs', [])
-            _childs.sort(key=get_datetime, reverse=order)
+            _childs.sort(key=get_datetime, reverse=reverse_childs)
             _flatten_tree(_childs, arr, order, reverse_childs)
             if node.has_key('childs'):
                 del node['childs']
         return arr
 
-    res = _flatten_tree(res, [], order, limit_total)
+    res = _flatten_tree(res, [], order, False)
 
     if limit_total and limit:
         return res[:int(limit)]
