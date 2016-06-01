@@ -18,6 +18,11 @@ def status():
     response = model.status()
     return result(response)
 
+@app.route('/db/api/status', methods=['GET'])
+def status():
+    response = model.status()
+    return result(response)
+
 @app.route('/db/api/clear/', methods=['POST'])
 def clear():
     res = model.clear()
