@@ -19,7 +19,7 @@ def status():
     return result(response)
 
 @app.route('/db/api/status', methods=['GET'])
-def status():
+def status1():
     response = model.status()
     return result(response)
 
