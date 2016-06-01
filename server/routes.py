@@ -13,12 +13,12 @@ def not_found(error):
     return result_not_found(error.description)
 
 ### Common
-@app.route('/db/api/status/', methods=['GET'])
+@app.route('/db/api/status', methods=['GET'])
 def status():
     response = model.status()
     return result(response)
 
-@app.route('/db/api/status', methods=['GET'])
+@app.route('/db/api/status/', methods=['GET'])
 def status1():
     response = model.status()
     return result(response)
